@@ -117,6 +117,8 @@
     .install-banner.visible { display: flex; }
     .install-banner .text { flex: 1; font-size: 14px; }
     .install-banner button { padding: 8px 16px; border-radius: 8px; border: none; background: var(--accent); color: var(--bg); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .photo-input-wrap { position: relative; }
+    .photo-input-wrap input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
     @media (min-width: 521px) { #app { border-left: 1px solid var(--border); border-right: 1px solid var(--border); } }
   </style>
 </head>
@@ -198,14 +200,14 @@
         </button>
       </div>
       <div class="content">
-        <img class="photo-preview" id="photoPreview">
+        <img class="photo-preview" id="photoPreview" alt="">
         <div class="form-group">
           <label>Foto (opcional)</label>
-          <label class="photo-btn">
+          <div class="photo-btn" id="photoBtn" onclick="triggerPhotoInput()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             <span id="photoBtnText">Elegir o sacar foto</span>
-            <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
-          </label>
+          </div>
+          <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
         </div>
         <div class="form-group">
           <label>Nombre *</label>
@@ -333,7 +335,7 @@
           <div class="settings-row">
             <div>
               <div class="label">Version</div>
-              <div class="desc">2.0 - 100% offline - Sin servidores</div>
+              <div class="desc">2.1 - 100% offline - Sin servidores</div>
             </div>
             <span class="badge">PWA</span>
           </div>
@@ -412,6 +414,7 @@
     let currentRecipeId = null;
     let currentPhotoBase64 = '';
     let deferredPrompt = null;
+    let cameFromDetail = false;
 
     // ===== INIT =====
     function init() {
@@ -454,12 +457,22 @@
       document.getElementById('app').scrollTop = 0;
     }
     function goBackFromRecipeForm() {
+      if (cameFromDetail && editingRecipeId) {
+        cameFromDetail = false;
+        showRecipeDetail(editingRecipeId);
+        return;
+      }
       if (listFilter.type === 'category') showRecipeList('category', listFilter.id);
       else if (listFilter.type === 'favorites') showFavorites();
       else if (listFilter.type === 'search') handleSearch(document.getElementById('searchInput').value);
       else navigate('home');
     }
-    function goBackFromDetail() { goBackFromRecipeForm(); }
+    function goBackFromDetail() {
+      if (listFilter.type === 'category') showRecipeList('category', listFilter.id);
+      else if (listFilter.type === 'favorites') showFavorites();
+      else if (listFilter.type === 'search') handleSearch(document.getElementById('searchInput').value);
+      else navigate('home');
+    }
 
     // ===== HOME =====
     function renderCategories() {
@@ -599,12 +612,18 @@
     }
 
     // ===== RECIPE FORM =====
+    function triggerPhotoInput() {
+      document.getElementById('photoInput').click();
+    }
     function showRecipeForm(id) {
       editingRecipeId = id || null;
       currentPhotoBase64 = '';
+      cameFromDetail = false;
       document.getElementById('recipeFormTitle').textContent = id ? 'Editar receta' : 'Nueva receta';
       const sel = document.getElementById('recipeCategory');
-      sel.innerHTML = categories.map(c => '<option value="' + c.id + '">' + esc(c.nombre) + '</option>').join('');
+      let opts = categories.map(c => '<option value="' + c.id + '">' + esc(c.nombre) + '</option>').join('');
+      opts += '<option value="">Sin categoria</option>';
+      sel.innerHTML = opts;
       const preview = document.getElementById('photoPreview');
       preview.src = '';
       preview.classList.remove('visible');
@@ -612,7 +631,7 @@
       if (id) {
         const r = recipes.find(x => x.id === id);
         document.getElementById('recipeName').value = r.nombre;
-        document.getElementById('recipeCategory').value = r.categoriaId || (categories[0]?.id || '');
+        document.getElementById('recipeCategory').value = r.categoriaId || '';
         document.getElementById('recipeIngredients').value = r.ingredientes;
         document.getElementById('recipeSteps').value = r.pasos;
         document.getElementById('recipeTime').value = r.tiempoMinutos;
@@ -637,16 +656,28 @@
     function handlePhoto(input) {
       const file = input.files[0];
       if (!file) return;
-      if (file.size > 2 * 1024 * 1024) { showToast('La foto es muy grande. Max: 2MB'); input.value = ''; return; }
+      if (file.size > 5 * 1024 * 1024) { showToast('La foto es muy grande. Max: 5MB'); input.value = ''; return; }
       const reader = new FileReader();
       reader.onload = e => {
-        currentPhotoBase64 = e.target.result;
-        const preview = document.getElementById('photoPreview');
-        preview.src = currentPhotoBase64;
-        preview.classList.add('visible');
-        document.getElementById('photoBtnText').textContent = 'Cambiar foto';
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxW = 800;
+          const scale = Math.min(1, maxW / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          const preview = document.getElementById('photoPreview');
+          preview.src = currentPhotoBase64;
+          preview.classList.add('visible');
+          document.getElementById('photoBtnText').textContent = 'Cambiar foto';
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+      input.value = '';
     }
     function saveRecipe() {
       const nombre = document.getElementById('recipeName').value.trim();
@@ -724,12 +755,19 @@
         else if (listFilter.type === 'search') handleSearch(document.getElementById('searchInput').value);
       }
     }
-    function editCurrentRecipe() { showRecipeForm(currentRecipeId); }
+    function editCurrentRecipe() {
+      cameFromDetail = true;
+      showRecipeForm(currentRecipeId);
+    }
     function shareCurrentRecipe() {
       const r = recipes.find(x => x.id === currentRecipeId);
       const text = '*' + r.nombre + '*\n\nIngredientes:\n' + r.ingredientes + '\n\nPasos:\n' + r.pasos + '\n\nTiempo: ' + r.tiempoMinutos + ' min';
-      const url = 'https://wa.me/?text=' + encodeURIComponent(text);
-      window.open(url, '_blank');
+      if (navigator.share) {
+        navigator.share({ title: r.nombre, text: text }).catch(() => {});
+      } else {
+        const url = 'https://wa.me/?text=' + encodeURIComponent(text);
+        window.open(url, '_blank');
+      }
     }
 
     // ===== TIMER =====
@@ -741,6 +779,11 @@
       display.classList.remove('warning', 'finished');
       if (timerSeconds > 0 && timerSeconds <= 60) display.classList.add('warning');
       if (timerSeconds <= 0 && !timerRunning) display.classList.add('finished');
+      if (timerRunning) {
+        document.title = '(' + m + ':' + s + ') Mis Recetas';
+      } else {
+        document.title = 'Mis Recetas';
+      }
     }
     function startTimer() {
       if (timerRunning) return;
