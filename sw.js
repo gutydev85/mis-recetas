@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mi-recetario-v4';
+const CACHE_NAME = 'mi-recetario-v5';
 const FILES_TO_CACHE = [
   './',
   './index.html',
