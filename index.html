@@ -7,8 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Mi Recetario personalizado. Tus recetas de cocina, siempre a mano. Sin conexión, sin anuncios, sin servidores.">
-  <!-- CSP básico para mitigar XSS -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self';">
   <title>Mi Recetario</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
@@ -167,7 +165,7 @@
             <button onclick="App.pauseTimer()" title="Pausar">&#9208;</button>
             <button onclick="App.addTimerMin(1)" title="+1 min">+1</button>
             <button onclick="App.addTimerMin(-1)" title="-1 min">-1</button>
-            <button onclick="App.resetTimer()" title="Reiniciar">&#8634;</button>
+          <button onclick="App.resetTimer()" title="Reiniciar">&#8634;</button>
           </div>
         </div>
         <div class="detail-section">
