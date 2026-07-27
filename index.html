@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1512">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Mi Recetario personalizado. Tus recetas de cocina, siempre a mano. Sin conexión, sin anuncios, sin servidores.">
+  <!-- CSP básico para mitigar XSS -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self';">
+  <title>Mi Recetario</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- VIEW: HOME -->
+    <div class="view active" id="view-home">
+      <div class="header">
+        <div class="logo-header">
+          <img src="icon-192.png" alt="">
+          <h1>Mi Recetario</h1>
+        </div>
+        <button class="header-btn" onclick="App.showFavorites()" title="Favoritos" aria-label="Favoritos">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="header-btn" onclick="App.showSettings()" title="Ajustes" aria-label="Ajustes">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+      <div class="content">
+        <div class="install-banner" id="installBanner">
+          <span class="text">Instala la app para usarla sin internet</span>
+          <button onclick="App.installApp()">Instalar</button>
+        </div>
+        <div class="search-box" id="searchBox">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-tert);flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="searchInput" placeholder="Buscar receta o ingrediente..." oninput="App.handleSearch(this.value)" onkeydown="if(event.key==='Enter'){event.target.blur();}">
+          <button class="clear-btn" onclick="App.clearSearch()" aria-label="Limpiar búsqueda">&#10005;</button>
+        </div>
+        <div class="stats-bar" id="statsBar"></div>
+        <div id="categoriesList"></div>
+      </div>
+      <button class="fab" onclick="App.showCategoryForm()" title="Nueva categoría" aria-label="Nueva categoría">+</button>
+    </div>
+
+    <!-- VIEW: CATEGORY FORM -->
+    <div class="view" id="view-category-form">
+      <div class="header">
+        <button class="header-btn" onclick="App.navigate('home')" aria-label="Volver">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1 id="catFormTitle">Nueva categoría</h1>
+        <button class="header-btn" onclick="App.saveCategory()" title="Guardar" aria-label="Guardar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        </button>
+      </div>
+      <div class="content">
+        <div class="form-group">
+          <label>Nombre de la categoría</label>
+          <input type="text" id="catNameInput" placeholder="Ej: Postres" maxlength="40" onkeydown="if(event.key==='Enter') App.saveCategory();">
+        </div>
+        <button class="btn-danger" id="catDeleteBtn" style="display:none" onclick="App.confirmDeleteCategory()">Eliminar categoría</button>
+      </div>
+    </div>
+
+    <!-- VIEW: RECIPE LIST -->
+    <div class="view" id="view-recipe-list">
+      <div class="header">
+        <button class="header-btn" onclick="App.navigate('home')" aria-label="Volver">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1 id="listTitle">Recetas</h1>
+      </div>
+      <div class="content">
+        <div id="recipeListContainer"></div>
+      </div>
+      <button class="fab" id="listFab" onclick="App.showRecipeForm()" title="Nueva receta" aria-label="Nueva receta">+</button>
+    </div>
+
+    <!-- VIEW: RECIPE FORM -->
+    <div class="view" id="view-recipe-form">
+      <div class="header">
+        <button class="header-btn" onclick="App.goBackFromRecipeForm()" aria-label="Volver">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1 id="recipeFormTitle">Nueva receta</h1>
+        <button class="header-btn" onclick="App.saveRecipe()" title="Guardar" aria-label="Guardar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        </button>
+      </div>
+      <div class="content">
+        <img class="photo-preview" id="photoPreview" alt="">
+        <div class="form-group">
+          <label>Foto (opcional)</label>
+          <div class="photo-btn" id="photoBtn" onclick="App.triggerPhotoInput()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <span id="photoBtnText">Elegir o sacar foto</span>
+          </div>
+          <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="App.handlePhoto(this)">
+        </div>
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="recipeName" placeholder="Ej: Tarta de manzana" maxlength="60" onkeydown="if(event.key==='Enter'){document.getElementById('recipeIngredients').focus();}">
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <select id="recipeCategory"></select>
+        </div>
+        <div class="form-group">
+          <label>Ingredientes (uno por línea)</label>
+          <textarea id="recipeIngredients" placeholder="2 manzanas&#10;1 taza de azúcar&#10;200g de harina" maxlength="5000"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Pasos (uno por línea)</label>
+          <textarea id="recipeSteps" placeholder="Pelar las manzanas&#10;Mezclar con azúcar&#10;Hornear 30 min" maxlength="10000"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tiempo de cocción (minutos)</label>
+          <input type="number" id="recipeTime" placeholder="30" min="1" max="9999" onkeydown="if(event.key==='Enter') App.saveRecipe();">
+        </div>
+        <div class="form-group">
+          <label>Nota final (opcional)</label>
+          <textarea id="recipeFinalNote" placeholder="Ej: No batir demasiado o la mezcla perderá aire." maxlength="2000"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Cronómetros de la receta</label>
+          <div id="recipeTimersEditor"></div>
+          <button type="button" class="btn-secondary" onclick="App.addTimerEditor()">+ Agregar cronómetro</button>
+        </div>
+        <button class="btn-primary" onclick="App.saveRecipe()">Guardar receta</button>
+        <button class="btn-secondary" onclick="App.goBackFromRecipeForm()" style="margin-top:10px">Cancelar</button>
+        <button class="btn-danger" id="recipeDeleteBtn" style="display:none" onclick="App.confirmDeleteRecipe()">Eliminar receta</button>
+      </div>
+    </div>
+
+    <!-- VIEW: RECIPE DETAIL -->
+    <div class="view" id="view-recipe-detail">
+      <div class="header">
+        <button class="header-btn" onclick="App.goBackFromDetail()" aria-label="Volver">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1 id="detailTitle">Receta</h1>
+        <button class="header-btn" onclick="App.editCurrentRecipe()" title="Editar" aria-label="Editar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+      </div>
+      <div class="content">
+        <div id="detailPhotoWrap"></div>
+        <div class="action-bar">
+          <button id="detailFavBtn" onclick="App.toggleCurrentFavorite()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <span>Favorito</span>
+          </button>
+          <button onclick="App.shareCurrentRecipe()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+            <span>Compartir</span>
+          </button>
+        </div>
+        <div class="timer-box">
+          <div class="timer-display" id="timerDisplay">00:00</div>
+          <div class="timer-controls">
+            <button class="primary" onclick="App.startTimer()" title="Iniciar">&#9654;</button>
+            <button onclick="App.pauseTimer()" title="Pausar">&#9208;</button>
+            <button onclick="App.addTimerMin(1)" title="+1 min">+1</button>
+            <button onclick="App.addTimerMin(-1)" title="-1 min">-1</button>
+            <button onclick="App.resetTimer()" title="Reiniciar">&#8634;</button>
+          </div>
+        </div>
+        <div class="detail-section">
+          <h3>Ingredientes</h3>
+          <ul id="detailIngredients"></ul>
+        </div>
+        <div class="detail-section">
+          <h3>Preparación</h3>
+          <ul id="detailSteps" class="v4-checklist"></ul>
+        </div>
+        <div id="detailTimersWrap"></div>
+        <div class="detail-section" id="detailTimeWrap">
+          <h3>Tiempo sugerido</h3>
+          <p id="detailTime"></p>
+        </div>
+        <div class="detail-section" id="detailNoteWrap" style="display:none">
+          <h3>Nota</h3>
+          <div class="v4-note" id="detailFinalNote"></div>
+        </div>
+        <button class="btn-danger" onclick="App.confirmDeleteRecipe()">Eliminar receta</button>
+      </div>
+    </div>
+
+    <!-- VIEW: SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="header">
+        <button class="header-btn" onclick="App.navigate('home')" aria-label="Volver">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1>Ajustes</h1>
+      </div>
+      <div class="content">
+        <div style="text-align:center;margin-bottom:24px">
+          <img src="icon-192.png" alt="" style="width:80px;height:80px;border-radius:20px;object-fit:cover;border:2px solid var(--border);box-shadow:var(--shadow)">
+          <div style="margin-top:10px;font-size:17px;font-weight:600">Mi Recetario</div>
+          <div style="font-size:13px;color:var(--text-tert);margin-top:4px">Personalizado</div>
+        </div>
+
+        <div style="margin-bottom:24px">
+          <h3 style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:1.2px;margin:0 0 12px 0;font-weight:600">Novedades</h3>
+          <div class="news-card" style="margin-top:0">
+            <div class="news-head">
+              <h2>Qué hay de nuevo</h2>
+              <span class="news-tag">v4.1</span>
+            </div>
+            <ul>
+              <li>Pasos de preparación marcables como completados.</li>
+              <li>Cronómetros múltiples por receta con nombre propio.</li>
+              <li>Nota final para consejos como "no batir demasiado".</li>
+              <li>Mejoras en favoritos y acciones de receta.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px">
+          <h3 style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:1.2px;margin:0 0 12px 0;font-weight:600">Datos</h3>
+          <div class="settings-row" onclick="App.exportData()">
+            <div>
+              <div class="label">Exportar recetas</div>
+              <div class="desc">Guarda un archivo con todas tus recetas</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-tert)"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="label">Importar recetas</div>
+              <div class="desc">Carga un archivo de backup anterior</div>
+            </div>
+            <label style="cursor:pointer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-tert)"><path d="m9 18 6-6-6-6"/></svg>
+              <input type="file" id="importInput" accept=".json" style="display:none" onchange="App.importData(this)">
+            </label>
+          </div>
+          <div class="settings-row" onclick="App.confirmClearAll()">
+            <div>
+              <div class="label" style="color:var(--danger)">Borrar todo</div>
+              <div class="desc">Elimina todas las recetas y categorías</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--danger)"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px">
+          <h3 style="font-size:11px;color:var(--text-sec);text-transform:uppercase;letter-spacing:1.2px;margin:0 0 12px 0;font-weight:600">Acerca de</h3>
+          <div class="settings-row">
+            <div>
+              <div class="label">Versión</div>
+              <div class="desc">4.1 — preparación interactiva — varios cronómetros — nota final</div>
+            </div>
+            <span class="badge">PWA</span>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="label">Almacenamiento</div>
+              <div class="desc">Tus datos viven solo en este dispositivo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h3 id="modalTitle">Confirmar</h3>
+        <p id="modalText">¿Estás seguro?</p>
+        <div class="modal-actions">
+          <button class="cancel" onclick="App.closeModal()">Cancelar</button>
+          <button class="confirm" id="modalConfirmBtn" onclick="App.modalConfirm()">Eliminar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
