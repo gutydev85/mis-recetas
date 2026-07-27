@@ -657,6 +657,8 @@ function showRecipeDetail(id) {
   state.timerSeconds = (recipe.tiempoMinutos || 0) * 60;
   state.timerRunning = false;
   state.timerEndAt = 0;
+  const tbox = document.querySelector('.timer-box');
+  if (tbox) tbox.classList.remove('running');
   updateTimerDisplay();
   setView('recipe-detail');
 }
@@ -817,6 +819,8 @@ function startTimer() {
   if (state.timerRunning || state.timerSeconds <= 0) return;
   state.timerRunning = true;
   state.timerEndAt = Date.now() + state.timerSeconds * 1000;
+  const tbox = document.querySelector('.timer-box');
+  if (tbox) tbox.classList.add('running');
   saveTimerState();
   state.timerInterval = setInterval(() => {
     const remaining = Math.max(0, Math.ceil((state.timerEndAt - Date.now()) / 1000));
@@ -840,6 +844,8 @@ function pauseTimer() {
   state.timerRunning = false;
   state.timerEndAt = 0;
   localStorage.removeItem(STORAGE_KEYS.timer);
+  const tbox = document.querySelector('.timer-box');
+  if (tbox) tbox.classList.remove('running');
   updateTimerDisplay();
 }
 
@@ -848,6 +854,8 @@ function resetTimer() {
   state.timerRunning = false;
   state.timerEndAt = 0;
   localStorage.removeItem(STORAGE_KEYS.timer);
+  const tbox = document.querySelector('.timer-box');
+  if (tbox) tbox.classList.remove('running');
   const recipe = currentRecipe();
   state.timerSeconds = (recipe?.tiempoMinutos || 0) * 60;
   updateTimerDisplay();
@@ -1111,6 +1119,8 @@ function init() {
           state.timerRunning = false;
           state.timerEndAt = 0;
           localStorage.removeItem(STORAGE_KEYS.timer);
+          const tbox2 = document.querySelector('.timer-box');
+          if (tbox2) tbox2.classList.remove('running');
           finishTimer();
         }
       }
