@@ -1,11 +1,11 @@
 {
   "name": "Mi Recetario",
   "short_name": "Recetario",
-  "description": "Mi Recetario personalizado. Tus recetas de cocina, siempre a mano. Sin conexion, sin anuncios, sin servidores.",
+  "description": "Tu recetario personal. Sin conexion, sin anuncios, sin servidores.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#1a1512",
-  "theme_color": "#1a1512",
+  "background_color": "#0f0c0a",
+  "theme_color": "#0f0c0a",
   "orientation": "portrait",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
