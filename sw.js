@@ -1,16 +1,35 @@
-const CACHE_NAME = 'mi-recetario-v5';
+const CACHE_NAME = 'mi-recetario-v5.1';
 const FILES_TO_CACHE = [
   './','./index.html','./styles.css','./app.js','./manifest.json',
   './icon-192.png','./icon-512.png'
 ];
+
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(FILES_TO_CACHE)));
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(FILES_TO_CACHE))
+  );
   self.skipWaiting();
 });
+
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
   self.clients.claim();
 });
+
 self.addEventListener('fetch', e => {
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  e.respondWith(
+    caches.match(e.request).then(r => {
+      if (r) return r;
+      return fetch(e.request).catch(() => {
+        // Fallback para navegación offline
+        if (e.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+      });
+    })
+  );
 });
