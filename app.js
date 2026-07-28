@@ -1422,6 +1422,23 @@ function init() {
       }
     }
   });
+  // Detectar actualizaciones del Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Hay una nueva versión esperando
+          App.toast.show('Actualización disponible. Recarga la app.', '🔄');
+          // Opcional: forzar recarga automática después de 3 segundos
+          // setTimeout(() => window.location.reload(), 3000);
+        }
+      });
+    });
+  });
+}
+
 
   setTimeout(hideSplash, 1800);
 }

@@ -4,6 +4,7 @@ const FILES_TO_CACHE = [
   './icon-192.png','./icon-512.png'
 ];
 
+// Instalar: guardar archivos en caché
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(c => c.addAll(FILES_TO_CACHE))
@@ -11,6 +12,7 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
+// Activar: limpiar cachés viejas y tomar control inmediato
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -20,16 +22,22 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Fetch: stale-while-revalidate
+// Sirve del caché INMEDIATAMENTE (rápido) pero también hace fetch en background para actualizar
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(r => {
-      if (r) return r;
-      return fetch(e.request).catch(() => {
-        // Fallback para navegación offline
-        if (e.request.mode === 'navigate') {
-          return caches.match('./index.html');
+    caches.match(e.request).then(cached => {
+      const fetchPromise = fetch(e.request).then(networkResponse => {
+        if (networkResponse && networkResponse.ok) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         }
-      });
+        return networkResponse;
+      }).catch(() => cached);
+
+      // Si tenemos caché, lo devolvemos rápido mientras actualizamos en background
+      // Si no hay caché, esperamos la red
+      return cached || fetchPromise;
     })
   );
 });
