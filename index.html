@@ -2,22 +2,22 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f0c0a">
-<meta name="description" content="Tu recetario personal. Sin conexión, sin anuncios, sin servidores.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Mi Recetario</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="app">
 
-<!-- SPLASH -->
+<!-- ========== SPLASH ========== -->
 <div id="splash" class="splash-screen">
   <div class="splash-content">
     <div class="splash-logo">
@@ -33,389 +33,424 @@
   </div>
 </div>
 
-<!-- INSTALL BANNER -->
-<div id="installBanner" class="install-banner">
-  <div class="install-icon">📲</div>
-  <div class="install-text">
-    <strong>Instala la app</strong>
-    <span>Úsala sin internet, como una app nativa</span>
+<!-- ========== APP ========== -->
+<div id="app">
+
+  <!-- ---------- TOAST ---------- -->
+  <div id="toast" class="toast">
+    <span id="toastIcon"></span>
+    <span id="toastText"></span>
   </div>
-  <button onclick="App.install()">Instalar</button>
-</div>
 
-<!-- TOAST -->
-<div id="toast" class="toast"><span id="toastIcon"></span><span id="toastText"></span></div>
-
-<!-- MODAL -->
-<div id="modalOverlay" class="modal-overlay" onclick="if(event.target===this)App.modal.close()">
-  <div class="modal">
-    <div class="modal-icon">⚠️</div>
-    <h3 id="modalTitle">Confirmar</h3>
-    <p id="modalText"></p>
-    <div class="modal-actions">
-      <button class="cancel" onclick="App.modal.close()">Cancelar</button>
-      <button class="confirm" onclick="App.modal.confirm()">Confirmar</button>
+  <!-- ---------- MODAL ---------- -->
+  <div id="modalOverlay" class="modal-overlay" onclick="if(event.target===this)App.modal.close()">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-icon">⚠️</div>
+      <h3 id="modalTitle">Confirmar</h3>
+      <p id="modalText"></p>
+      <div class="modal-actions">
+        <button class="cancel" onclick="App.modal.close()">Cancelar</button>
+        <button class="confirm" onclick="App.modal.confirm()">Confirmar</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- VIEW: HOME -->
-<section id="view-home" class="view active">
-  <header class="header header-hero">
-    <div class="header-content">
-      <div class="logo-header">
-        <div class="logo-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+  <!-- ========================================================
+       VISTA: HOME
+       ======================================================== -->
+  <div id="view-home" class="view active">
+    <header class="header header-hero">
+      <div class="header-content">
+        <div class="logo-header">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+          </div>
+          <div>
+            <h1>Mi Recetario</h1>
+            <span class="header-version">v5.4</span>
+          </div>
         </div>
-        <div>
-          <h1>Mi Recetario</h1>
-          <span class="header-version">v5.1</span>
+        <div class="header-actions">
+          <button class="header-btn" onclick="App.settings.show()" aria-label="Ajustes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
         </div>
       </div>
-      <div class="header-actions">
-        <button class="header-btn" onclick="App.settings.show()" aria-label="Ajustes">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 5 15.4a1.65 1.65 0 0 0-1.51 1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+    </header>
+
+    <main class="content content-home">
+      <!-- Install Banner -->
+      <div id="installBanner" class="install-banner">
+        <div class="install-icon">📲</div>
+        <div class="install-text">
+          <strong>Instalar app</strong>
+          <span>Accede rapido desde tu pantalla de inicio</span>
+        </div>
+        <button onclick="App.install()">Instalar</button>
+      </div>
+
+      <!-- Search -->
+      <div id="searchBox" class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="searchInput" placeholder="Buscar recetas..." autocomplete="off">
+        <button id="searchClear" class="clear-btn" onclick="App.search.clear()">✕</button>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button class="qa-btn" onclick="App.favorites.show()">
+          <div class="qa-icon qa-fav">♥</div>
+          <span>Favoritos</span>
+        </button>
+        <button class="qa-btn" onclick="App.category.form()">
+          <div class="qa-icon qa-cat">📁</div>
+          <span>Categoria</span>
+        </button>
+        <button class="qa-btn" onclick="App.recipe.form()">
+          <div class="qa-icon qa-add">＋</div>
+          <span>Receta</span>
         </button>
       </div>
-    </div>
-  </header>
 
-  <div class="content content-home">
-    <div id="searchBox" class="search-box">
-      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="searchInput" type="search" placeholder="Buscar recetas..." autocomplete="off">
-      <button class="clear-btn" id="searchClear" onclick="App.search.clear()">✕</button>
-    </div>
+      <!-- Stats -->
+      <div id="statsBar" class="stats-bar"></div>
 
-    <div class="quick-actions">
-      <button class="qa-btn" onclick="App.favorites.show()">
-        <div class="qa-icon qa-fav">❤️</div>
-        <span>Favoritos</span>
-      </button>
-      <button class="qa-btn" onclick="App.category.form()">
-        <div class="qa-icon qa-cat">📁</div>
-        <span>Categoría</span>
-      </button>
-      <button class="qa-btn" onclick="App.recipe.form()">
-        <div class="qa-icon qa-add">➕</div>
-        <span>Receta</span>
-      </button>
-    </div>
-
-    <div id="statsBar" class="stats-bar"></div>
-
-    <div class="section-header">
-      <h2>Tus categorías</h2>
-    </div>
-    <div id="categoriesList"></div>
+      <!-- Categories -->
+      <div class="section-header">
+        <h2>Categorias</h2>
+      </div>
+      <div id="categoriesList"></div>
+    </main>
   </div>
-</section>
 
-<!-- VIEW: RECIPE LIST -->
-<section id="view-recipe-list" class="view">
-  <header class="header">
-    <div class="header-content">
-      <button class="header-btn" onclick="App.nav.home()" aria-label="Volver">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <h1 id="listTitle">Recetas</h1>
-    </div>
-  </header>
-  <div class="content" id="recipeListContainer"></div>
-  <button id="listFab" class="fab" onclick="App.recipe.form()">+</button>
-</section>
-
-<!-- VIEW: RECIPE DETAIL -->
-<section id="view-recipe-detail" class="view">
-  <header class="header header-transparent">
-    <div class="header-content">
-      <button class="header-btn" onclick="App.nav.backFromDetail()" aria-label="Volver">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <h1 id="detailTitle">Receta</h1>
-      <div class="header-actions">
-        <button class="header-btn" onclick="App.recipe.share()" aria-label="Compartir">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49"/><path d="M15.41 6.51 8.59 10.49"/></svg>
+  <!-- ========================================================
+       VISTA: LISTA DE RECETAS
+       ======================================================== -->
+  <div id="view-recipe-list" class="view">
+    <header class="header">
+      <div class="header-content">
+        <button class="header-btn" onclick="App.nav.home()" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
         </button>
-        <button class="header-btn" onclick="App.recipe.editCurrent()" aria-label="Editar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        <h1 id="listTitle">Recetas</h1>
+      </div>
+    </header>
+    <main class="content">
+      <div id="recipeListContainer"></div>
+    </main>
+    <button id="listFab" class="fab" onclick="App.recipe.form()">＋</button>
+  </div>
+
+  <!-- ========================================================
+       VISTA: DETALLE DE RECETA
+       ======================================================== -->
+  <div id="view-recipe-detail" class="view">
+    <header class="header header-transparent">
+      <div class="header-content">
+        <button class="header-btn" onclick="App.nav.backFromDetail()" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h1 id="detailTitle">Receta</h1>
+        <div class="header-actions">
+          <button class="header-btn" onclick="App.recipe.share()" aria-label="Compartir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51 15.42 17.49"/><path d="M15.41 6.51 8.59 10.49"/></svg>
+          </button>
+          <button class="header-btn" onclick="App.recipe.editCurrent()" aria-label="Editar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    <main class="content content-detail">
+      <div id="detailPhotoWrap"></div>
+      <div class="detail-header">
+        <h1 id="detailRecipeName"></h1>
+        <div class="detail-meta">
+          <span class="detail-time">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span id="detailTime">0 min</span>
+          </span>
+          <span class="detail-category" id="detailCategory">Sin categoria</span>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button id="detailFavBtn" onclick="App.favorites.toggleCurrent()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+          <span>Marcar favorito</span>
+        </button>
+        <button class="cook-btn" onclick="App.cookMode.enter()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M2 12h20"/><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="m4 8 16-4"/><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8"/></svg>
+          Modo cocinar
         </button>
       </div>
-    </div>
-  </header>
-  <div class="content content-detail">
-    <div id="detailPhotoWrap"></div>
-    <div class="detail-header">
-      <h1 id="detailRecipeName"></h1>
-      <div class="detail-meta">
-        <span class="detail-time">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          <span id="detailTime">0 min</span>
-        </span>
-        <span class="detail-category" id="detailCategory">Sin categoría</span>
-      </div>
-    </div>
 
-    <div class="action-bar">
-      <button id="detailFavBtn" onclick="App.favorites.toggleCurrent()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-        <span>Marcar favorito</span>
-      </button>
-      <button class="cook-btn" onclick="App.cookMode.enter()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="m19 12-3-3"/><path d="m19 12-3 3"/></svg>
-        Modo cocinar
-      </button>
-    </div>
-
-    <div class="detail-section">
-      <h3><span class="section-dot"></span>Ingredientes</h3>
-      <ul id="detailIngredients" class="ingredient-list"></ul>
-    </div>
-
-    <div class="detail-section">
-      <h3><span class="section-dot"></span>Pasos</h3>
-      <div id="detailSteps" class="step-list"></div>
-    </div>
-
-    <div id="detailTimersWrap"></div>
-
-    <div class="detail-section">
-      <h3><span class="section-dot"></span>Cronómetro principal</h3>
-      <div class="timer-box" id="mainTimerBox">
-        <div class="timer-display" id="timerDisplay">00:00</div>
+      <!-- Timer principal -->
+      <div id="mainTimerBox" class="timer-box">
+        <div id="timerDisplay" class="timer-display">00:00</div>
         <div class="timer-controls">
-          <button onclick="App.timer.addMinutes(-1)">-1m</button>
-          <button onclick="App.timer.addMinutes(-5)">-5m</button>
-          <button class="primary" id="timerPlayBtn" onclick="App.timer.toggle()">▶</button>
-          <button onclick="App.timer.addMinutes(5)">+5m</button>
-          <button onclick="App.timer.addMinutes(1)">+1m</button>
-          <button onclick="App.timer.reset()">↺</button>
+          <button onclick="App.timer.addMinutes(-1)">−1</button>
+          <button onclick="App.timer.addMinutes(-5)">−5</button>
+          <button id="timerPlayBtn" class="primary" onclick="App.timer.toggle()">▶</button>
+          <button onclick="App.timer.addMinutes(5)">+5</button>
+          <button onclick="App.timer.addMinutes(1)">+1</button>
+          <button onclick="App.timer.resetMain()">↺</button>
         </div>
       </div>
-    </div>
 
-    <div class="detail-section" id="detailNoteWrap" style="display:none">
-      <h3><span class="section-dot"></span>Nota del chef</h3>
-      <div class="chef-note">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-        <p id="detailFinalNote"></p>
+      <div class="detail-section">
+        <h3><span class="section-dot"></span> Ingredientes</h3>
+        <ul id="detailIngredients" class="ingredient-list"></ul>
       </div>
-    </div>
-  </div>
-</section>
 
-<!-- VIEW: RECIPE FORM -->
-<section id="view-recipe-form" class="view">
-  <header class="header">
-    <div class="header-content">
-      <button class="header-btn" onclick="App.nav.backFromForm()" aria-label="Volver">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <h1 id="recipeFormTitle">Nueva receta</h1>
-    </div>
-  </header>
-  <div class="content">
-    <div class="form-group">
-      <label>Nombre de la receta <span class="label-hint">*</span></label>
-      <input id="recipeName" type="text" placeholder="Ej: Tarta de manzana">
-    </div>
-    <div class="form-group">
-      <label>Categoría</label>
-      <select id="recipeCategory"></select>
-    </div>
-    <div class="form-group">
-      <label>Ingredientes <span class="label-hint">(uno por línea)</span></label>
-      <textarea id="recipeIngredients" placeholder="200g harina
-3 huevos
-100g azúcar..."></textarea>
-    </div>
-    <div class="form-group">
-      <label>Pasos <span class="label-hint">(uno por línea)</span></label>
-      <textarea id="recipeSteps" placeholder="Precalentar horno a 180°C
-Mezclar ingredientes secos..."></textarea>
-    </div>
-    <div class="form-group">
-      <label>Tiempo de cocción <span class="label-hint">(minutos)</span></label>
-      <input id="recipeTime" type="number" min="0" placeholder="45">
-    </div>
-    <div class="form-group">
-      <label>Nota final <span class="label-hint">(consejos opcionales)</span></label>
-      <textarea id="recipeFinalNote" placeholder="Deja reposar 10 min antes de servir..."></textarea>
-    </div>
-    <div class="form-group">
-      <label>Foto</label>
-      <div class="photo-group">
+      <div class="detail-section">
+        <h3><span class="section-dot"></span> Pasos</h3>
+        <div id="detailSteps" class="step-list"></div>
+      </div>
+
+      <div id="detailTimersWrap"></div>
+
+      <div id="detailNoteWrap" class="detail-section" style="display:none">
+        <div class="chef-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <p id="detailFinalNote"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================
+       VISTA: FORMULARIO RECETA
+       ======================================================== -->
+  <div id="view-recipe-form" class="view">
+    <header class="header">
+      <div class="header-content">
+        <button class="header-btn" onclick="App.nav.backFromForm()" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h1 id="recipeFormTitle">Nueva receta</h1>
+      </div>
+    </header>
+    <main class="content">
+      <div class="form-group">
+        <label for="recipeName">Nombre de la receta <span class="label-hint">*</span></label>
+        <input type="text" id="recipeName" placeholder="Ej: Tacos al pastor">
+      </div>
+      <div class="form-group">
+        <label for="recipeCategory">Categoria</label>
+        <select id="recipeCategory"></select>
+      </div>
+      <div class="form-group">
+        <label for="recipeIngredients">Ingredientes <span class="label-hint">(uno por linea)</span></label>
+        <textarea id="recipeIngredients" placeholder="500g de carne&#10;2 cebollas&#10;Sal al gusto"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="recipeSteps">Pasos <span class="label-hint">(uno por linea)</span></label>
+        <textarea id="recipeSteps" placeholder="1. Picar la cebolla&#10;2. Sellar la carne 5 min&#10;3. Mezclar todo"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="recipeTime">Tiempo de coccion <span class="label-hint">(minutos)</span></label>
+        <input type="number" id="recipeTime" placeholder="30" min="0">
+      </div>
+      <div class="form-group">
+        <label for="recipeFinalNote">Nota final <span class="label-hint">(consejos opcionales)</span></label>
+        <textarea id="recipeFinalNote" placeholder="Sirve caliente con limon..."></textarea>
+      </div>
+      <div class="form-group photo-group">
         <img id="photoPreview" class="photo-preview" alt="Vista previa">
-        <input id="photoInput" type="file" accept="image/*" hidden onchange="App.photo.handle(this)">
-        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-          <span id="photoBtnText">Añadir foto</span>
+        <button type="button" class="photo-btn" onclick="document.getElementById('photoInput').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span id="photoBtnText">Anadir foto</span>
+        </button>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="App.photo.handle(this)">
+      </div>
+
+      <div class="form-group">
+        <label>Cronometros adicionales</label>
+        <div id="recipeTimersEditor"></div>
+        <button type="button" class="btn-ghost" onclick="App.timer.addEditor()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          Anadir cronometro
         </button>
       </div>
-    </div>
-    <div class="form-group">
-      <label>Cronómetros adicionales</label>
-      <div id="recipeTimersEditor"></div>
-      <button class="btn-ghost" onclick="App.timer.addEditor()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-        Añadir cronómetro
+
+      <button class="btn-primary" onclick="App.recipe.save()">Guardar receta</button>
+      <button class="btn-secondary" onclick="App.nav.backFromForm()">Cancelar</button>
+      <button id="recipeDeleteBtn" class="btn-danger" style="display:none" onclick="App.recipe.confirmDelete()">Eliminar receta</button>
+    </main>
+  </div>
+
+  <!-- ========================================================
+       VISTA: FORMULARIO CATEGORIA
+       ======================================================== -->
+  <div id="view-category-form" class="view">
+    <header class="header">
+      <div class="header-content">
+        <button class="header-btn" onclick="App.nav.home()" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h1 id="catFormTitle">Nueva categoria</h1>
+      </div>
+    </header>
+    <main class="content">
+      <div class="form-group">
+        <label for="catNameInput">Nombre</label>
+        <input type="text" id="catNameInput" placeholder="Ej: Postres">
+      </div>
+      <button class="btn-primary" onclick="App.category.save()">Guardar</button>
+      <button class="btn-secondary" onclick="App.nav.home()">Cancelar</button>
+      <button id="catDeleteBtn" class="btn-danger" style="display:none" onclick="App.category.confirmDelete()">Eliminar categoria</button>
+    </main>
+  </div>
+
+  <!-- ========================================================
+       VISTA: AJUSTES
+       ======================================================== -->
+  <div id="view-settings" class="view">
+    <header class="header">
+      <div class="header-content">
+        <button class="header-btn" onclick="App.nav.home()" aria-label="Volver">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h1>Ajustes</h1>
+      </div>
+    </header>
+    <main class="content">
+      <!-- News -->
+      <div class="news-card">
+        <div class="news-head">
+          <span class="news-tag">✨ Novedades v5.4</span>
+          <span class="news-date">Julio 2026</span>
+        </div>
+        <ul>
+          <li>Diseño visual completamente renovado</li>
+          <li>Modo cocinar con salida robusta y TTS mejorado</li>
+          <li>Auto-lectura de pasos y navegacion por teclado</li>
+          <li>Animaciones suaves y micro-interacciones</li>
+          <li>Mejor accesibilidad y estados de foco</li>
+        </ul>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Tus datos</div>
+        <div class="settings-row" onclick="App.data.export()">
+          <div>
+            <div class="label">Exportar recetas</div>
+            <div class="desc">Descarga un archivo JSON de respaldo</div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="label">Importar recetas</div>
+            <div class="desc">Restaura desde un archivo de backup</div>
+          </div>
+          <label style="cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+            <input type="file" accept="application/json" style="display:none" onchange="App.data.import(this)">
+          </label>
+        </div>
+        <div class="settings-row danger" onclick="App.data.confirmClear()">
+          <div>
+            <div class="label">Borrar todo</div>
+            <div class="desc">Elimina todas las recetas y categorias</div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Preferencias</div>
+        <div class="settings-row" onclick="App.settings.toggleSound()">
+          <div>
+            <div class="label">Efectos de sonido</div>
+            <div class="desc" id="soundDesc">Activados</div>
+          </div>
+          <div id="soundToggle" class="toggle-switch active"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Acerca de</div>
+        <div class="settings-row-static">
+          <div>
+            <div class="label">Version</div>
+            <div class="desc">5.4 — Diseno renovado</div>
+          </div>
+        </div>
+        <div class="settings-row-static">
+          <div>
+            <div class="label">Almacenamiento</div>
+            <div class="desc">Tus datos viven solo en este dispositivo</div>
+          </div>
+        </div>
+        <div class="settings-row-static">
+          <div>
+            <div class="label">Tipo</div>
+            <div class="desc">PWA — Funciona sin conexion</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================
+       VISTA: MODO COCINAR
+       ======================================================== -->
+  <div id="view-cook-mode" class="view">
+    <div class="cook-progress"><div id="cookProgressBar" class="cook-progress-bar"></div></div>
+    <header class="cook-header">
+      <button class="header-btn" onclick="App.cookMode.exit()" aria-label="Salir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
-    </div>
-    <button class="btn-primary" onclick="App.recipe.save()">Guardar receta</button>
-    <button class="btn-secondary" onclick="App.nav.backFromForm()">Cancelar</button>
-    <button class="btn-danger" id="recipeDeleteBtn" style="display:none" onclick="App.recipe.confirmDelete()">Eliminar receta</button>
-  </div>
-</section>
-
-<!-- VIEW: CATEGORY FORM -->
-<section id="view-category-form" class="view">
-  <header class="header">
-    <div class="header-content">
-      <button class="header-btn" onclick="App.nav.home()" aria-label="Volver">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      <h1 id="cookTitle">Receta</h1>
+      <button class="header-btn" onclick="App.cookMode.showIngredients()" aria-label="Ingredientes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
       </button>
-      <h1 id="catFormTitle">Nueva categoría</h1>
-    </div>
-  </header>
-  <div class="content">
-    <div class="form-group">
-      <label>Nombre</label>
-      <input id="catNameInput" type="text" placeholder="Ej: Postres">
-    </div>
-    <button class="btn-primary" onclick="App.category.save()">Guardar</button>
-    <button class="btn-secondary" onclick="App.nav.home()">Cancelar</button>
-    <button class="btn-danger" id="catDeleteBtn" style="display:none" onclick="App.category.confirmDelete()">Eliminar categoría</button>
-  </div>
-</section>
+    </header>
 
-<!-- VIEW: SETTINGS -->
-<section id="view-settings" class="view">
-  <header class="header">
-    <div class="header-content">
-      <button class="header-btn" onclick="App.nav.home()" aria-label="Volver">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    <main id="cookBody" class="cook-body">
+      <div id="cookDots" class="cook-dots"></div>
+      <button id="cookTtsBtn" class="cook-tts-btn" onclick="App.cookMode.speak()" aria-label="Leer paso">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
       </button>
-      <h1>Ajustes</h1>
-    </div>
-  </header>
-  <div class="content">
-    <div class="news-card">
-      <div class="news-head">
-        <span class="news-tag">✨ Novedades v5.1</span>
-        <span class="news-date">Julio 2026</span>
+      <div id="cookStepNum" class="cook-step-num"></div>
+      <div id="cookStepText" class="cook-step-text"></div>
+      <div id="cookQuickDisplay" class="cook-quick-display"></div>
+    </main>
+
+    <div class="cook-timers-panel" id="cookTimersPanel">
+      <div class="cook-timers-toggle" onclick="App.cookMode.toggleTimersPanel()">
+        <span>Cronometros</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="m6 9 6 6 6-6"/></svg>
       </div>
-      <ul>
-        <li>Audio motor reescrito: sonido estable y sin cortes</li>
-        <li>Código modularizado y más eficiente</li>
-        <li>Corrección de bugs en timers y checklist</li>
-        <li>Mejor manejo de memoria y eventos</li>
-      </ul>
+      <div id="cookTimersList" class="cook-timers-list"></div>
     </div>
 
-    <div class="settings-group">
-      <div class="settings-group-title">Tus datos</div>
-      <div class="settings-row" onclick="App.data.export()">
-        <div>
-          <div class="label">Exportar recetas</div>
-          <div class="desc">Descarga un archivo JSON de respaldo</div>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
-      </div>
-      <div class="settings-row" onclick="document.getElementById('importInput').click()">
-        <div>
-          <div class="label">Importar recetas</div>
-          <div class="desc">Restaura desde un archivo de backup</div>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
-      </div>
-      <input id="importInput" type="file" accept="application/json" hidden onchange="App.data.import(this)">
-      <div class="settings-row danger" onclick="App.data.confirmClear()">
-        <div>
-          <div class="label">Borrar todo</div>
-          <div class="desc">Elimina todas las recetas y categorías</div>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-      </div>
-    </div>
+    <nav class="cook-nav">
+      <button id="cookPrevBtn" onclick="App.cookMode.prev()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="m15 18-6-6 6-6"/></svg>
+        Anterior
+      </button>
+      <div id="cookNavDots" class="cook-dots"></div>
+      <button id="cookNextBtn" class="primary" onclick="App.cookMode.next()">
+        Siguiente
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </nav>
 
-    <div class="settings-group">
-      <div class="settings-group-title">Preferencias</div>
-      <div class="settings-row" onclick="App.audio.toggle()">
-        <div>
-          <div class="label">Efectos de sonido</div>
-          <div class="desc" id="soundDesc">Activados</div>
-        </div>
-        <div id="soundToggle" class="toggle-switch active"><div class="toggle-knob"></div></div>
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-group-title">Acerca de</div>
-      <div class="settings-row-static">
-        <div><div class="label">Versión</div><div class="desc">5.1 — Motor de audio renovado</div></div>
-      </div>
-      <div class="settings-row-static">
-        <div><div class="label">Almacenamiento</div><div class="desc">Tus datos viven solo en este dispositivo</div></div>
-      </div>
-      <div class="settings-row-static">
-        <div><div class="label">Tipo</div><div class="desc">PWA — Funciona sin conexión</div></div>
+    <!-- Ingredientes Overlay -->
+    <div id="cookIngredientsOverlay" class="cook-ingredients-overlay" onclick="if(event.target===this)App.cookMode.closeIngredients()">
+      <div class="cook-ingredients-sheet">
+        <h3>Ingredientes</h3>
+        <ul id="cookIngredientsList"></ul>
+        <button class="cook-ingredients-close" onclick="App.cookMode.closeIngredients()">Cerrar</button>
       </div>
     </div>
   </div>
-</section>
 
-<!-- VIEW: COOK MODE -->
-<section id="view-cook-mode" class="cook-mode-view">
-  <div class="cook-progress"><div class="cook-progress-bar" id="cookProgressBar"></div></div>
-  <header class="cook-header">
-    <button class="header-btn" onclick="App.cookMode.exit()" aria-label="Salir">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-    </button>
-    <h1 id="cookTitle">Modo cocinar</h1>
-    <button class="header-btn" onclick="App.cookMode.showIngredients()" aria-label="Ingredientes">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-    </button>
-  </header>
-  <div class="cook-body" id="cookBody">
-    <div id="cookDots" class="cook-dots"></div>
-    <div class="cook-step-num" id="cookStepNum"></div>
-    <button class="cook-tts-btn" id="cookTtsBtn" onclick="App.cookMode.speak()" aria-label="Leer paso">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-    </button>
-    <div class="cook-step-text" id="cookStepText"></div>
-    <div id="cookQuickTimerWrap"></div>
-    <div class="cook-quick-display" id="cookQuickDisplay"></div>
-  </div>
-  <div class="cook-timers-panel" id="cookTimersPanel">
-    <div class="cook-timers-toggle" onclick="App.cookMode.toggleTimersPanel()">
-      <span>Cronómetros</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-    </div>
-    <div class="cook-timers-list" id="cookTimersList"></div>
-  </div>
-  <div class="cook-nav">
-    <button id="cookPrevBtn" onclick="App.cookMode.prev()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      Anterior
-    </button>
-    <div class="cook-dots" id="cookNavDots"></div>
-    <button class="primary" id="cookNextBtn" onclick="App.cookMode.next()">
-      Siguiente
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-    </button>
-  </div>
-</section>
-
-<!-- INGREDIENTS OVERLAY -->
-<div id="cookIngredientsOverlay" class="cook-ingredients-overlay" onclick="if(event.target===this)App.cookMode.closeIngredients()">
-  <div class="cook-ingredients-sheet">
-    <h3>Ingredientes</h3>
-    <ul id="cookIngredientsList"></ul>
-    <button class="cook-ingredients-close" onclick="App.cookMode.closeIngredients()">Cerrar</button>
-  </div>
 </div>
 
-</div>
 <script src="app.js"></script>
 </body>
 </html>

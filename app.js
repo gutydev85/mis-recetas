@@ -1,10 +1,10 @@
-/* Mi Recetario — app.js v5.3 */
-/* Correcciones: modo cocinar salida funcional, TTS robusto, confirmacion timers */
+/* Mi Recetario — app.js v5.4 */
+/* Mejoras: modo cocinar salida robusta, TTS con cola, auto-lectura, teclado, animaciones */
 
 'use strict';
 
 const CONFIG = {
-  VERSION: 5.3,
+  VERSION: 5.4,
   STORAGE_KEYS: {
     categories: 'mr_categories',
     recipes: 'mr_recipes',
@@ -22,13 +22,13 @@ const CONFIG = {
 let _navLock = false;
 
 const ICONS = {
-  folder: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
-  folderOpen: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
-  chef: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>',
-  utensils: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
-  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
-  clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-  heart: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>'
+  folder: '',
+  folderOpen: '',
+  chef: '',
+  utensils: '',
+  check: '',
+  clock: '',
+  heart: ''
 };
 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -343,9 +343,9 @@ const Render = {
     if (!DOM.statsBar) return;
     const total = State.recipes.length;
     const favs = State.recipes.filter(r => r.favorito).length;
-    DOM.statsBar.innerHTML = '<span class="stat"><b>' + total + '</b> receta' + (total !== 1 ? 's' : '') + '</span>' +
-      '<span class="stat"><b>' + favs + '</b> favorita' + (favs !== 1 ? 's' : '') + '</span>' +
-      '<span class="stat"><b>' + State.categories.length + '</b> categoria' + (State.categories.length !== 1 ? 's' : '') + '</span>';
+    DOM.statsBar.innerHTML = '<b>' + total + '</b> receta' + (total !== 1 ? 's' : '') + '' +
+      '<b>' + favs + '</b> favorita' + (favs !== 1 ? 's' : '') + '' +
+      '<b>' + State.categories.length + '</b> categoria' + (State.categories.length !== 1 ? 's' : '') + '';
   },
 
   categories() {
@@ -365,9 +365,9 @@ const Render = {
         card.className = 'category-card';
         card.style.animationDelay = (i * 50) + 'ms';
         card.innerHTML = '<div class="icon-wrap">' + ICONS.folder + '</div>' +
-          '<div style="flex:1;min-width:0"><div class="name">' + escapeHtml(cat.nombre) + '</div>' +
+          '<div><div class="name">' + escapeHtml(cat.nombre) + '</div>' +
           '<div class="count">' + count + ' receta' + (count !== 1 ? 's' : '') + '</div></div>' +
-          '<div class="cat-actions"><button class="header-btn" onclick="event.stopPropagation();App.category.form(\'' + cat.id + '\')" aria-label="Editar">&#9998;</button></div>';
+          '<div class="cat-actions"><button class="header-btn" onclick="App.category.form(\'' + cat.id + '\');event.stopPropagation();">✏️</button></div>';
         card.addEventListener('click', () => App.recipe.showList('category', cat.id));
         frag.appendChild(card);
       });
@@ -378,7 +378,7 @@ const Render = {
       const card = document.createElement('div');
       card.className = 'category-card';
       card.innerHTML = '<div class="icon-wrap">' + ICONS.folderOpen + '</div>' +
-        '<div style="flex:1;min-width:0"><div class="name">Sin categoria</div>' +
+        '<div><div class="name">Sin categoria</div>' +
         '<div class="count">' + uncategorized.length + ' receta' + (uncategorized.length !== 1 ? 's' : '') + '</div></div>';
       card.addEventListener('click', () => App.recipe.showList('category', null));
       frag.appendChild(card);
@@ -400,14 +400,13 @@ const Render = {
       const catName = cat ? cat.nombre : 'Sin categoria';
       const row = document.createElement('div');
       row.className = 'recipe-row';
-      row.style.animationDelay = (i * 60) + 'ms';
-      row.innerHTML = (recipe.fotoPath ? '<img src="' + recipe.fotoPath + '" class="recipe-thumb" alt="" loading="lazy">' : '<div class="recipe-thumb-placeholder">' + ICONS.chef + '</div>') +
+      row.style.animationDelay = (i * 60) + 'ms';row.innerHTML = (recipe.fotoPath ? '<img src="' + recipe.fotoPath + '" class="recipe-thumb" alt="">' : '<div class="recipe-thumb-placeholder">' + ICONS.chef + '</div>') +
         '<div class="info">' +
         '<div class="title">' + escapeHtml(recipe.nombre) + '</div>' +
         '<div class="meta">' + ICONS.clock + ' ' + catName + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div>' +
         '</div>' +
         '<div class="row-actions">' +
-        '<button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" aria-label="Favorito">' + ICONS.heart + '</button>' +
+        '<button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" data-id="' + recipe.id + '">' + ICONS.heart + '</button>' +
         '</div>';
       row.addEventListener('click', function(e) {
         if (e.target.closest('.fav-btn')) return;
@@ -549,8 +548,7 @@ const Recipe = {
     Storage.ensureStepState(recipe);
 
     DOM.detailTitle.textContent = recipe.nombre;
-    DOM.detailRecipeName.textContent = recipe.nombre;
-    DOM.detailPhotoWrap.innerHTML = recipe.fotoPath? '<img src="' + recipe.fotoPath + '" class="detail-photo" alt="">' : '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
+    DOM.detailRecipeName.textContent = recipe.nombre;DOM.detailPhotoWrap.innerHTML = recipe.fotoPath? '<img src="' + recipe.fotoPath + '" class="detail-photo" alt="">' : '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
     DOM.detailIngredients.innerHTML = parseLines(recipe.ingredientes).map(function(line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('');
     this.renderSteps(recipe);
     App.timer.renderDetailTimers(recipe);
@@ -583,7 +581,7 @@ const Recipe = {
     Storage.ensureStepState(recipe);
     const steps = parseLines(recipe.pasos);
     if (!steps.length) {
-      DOM.detailSteps.innerHTML = '<p style="color:var(--text-tert)">No hay pasos anadidos.</p>';
+      DOM.detailSteps.innerHTML = '<p class="empty-state" style="padding:20px 0">No hay pasos anadidos.</p>';
       return;
     }
     DOM.detailSteps.innerHTML = steps.map(function(step, i) {
@@ -777,10 +775,9 @@ const Timer = {
       return '<div class="v4-timer-editor">' +
         '<input type="text" class="v4-timer-name" placeholder="Nombre" value="' + escapeHtml(t.name || '') + '">' +
         '<div class="v4-time-row">' +
-        '<input type="number" class="v4-timer-min" placeholder="Min" min="0" value="' + (Math.floor((t.durationSeconds || 0) / 60)) + '">' +
-        '<span style="color:var(--text-tert)">:</span>' +
+        '<input type="number" class="v4-timer-min" placeholder="Min" min="0" value="' + Math.floor((t.durationSeconds || 0) / 60) + '">' + ':' +
         '<input type="number" class="v4-timer-sec" placeholder="Seg" min="0" max="59" value="' + ((t.durationSeconds || 0) % 60) + '">' +
-        '<button class="header-btn" onclick="App.timer.removeEditor(' + i + ')" aria-label="Eliminar">&#128465;</button>' +
+        '<button class="header-btn" onclick="App.timer.removeEditor(' + i + ')">🗑️</button>' +
         '</div></div>';
     }).join('');
   },
@@ -933,11 +930,11 @@ const Timer = {
       return;
     }
     const self = this;
-    wrap.innerHTML = '<h3 style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px;margin:0 0 12px;font-weight:700">Cronometros de la receta</h3>' +
+    wrap.innerHTML = '<h3>Cronometros de la receta</h3>' +
       recipe.timers.map(function(timer, i) {
         return '<div class="v4-timer-card">' +
           '<h4>' + escapeHtml(timer.name || 'Cronometro') + '</h4>' +
-          '<div class="v4-display ' + self.timerClass(timer) + '" id="detailTimerDisplay_' + i + '">' + formatTime(timer.remainingSeconds != null ? timer.remainingSeconds : timer.durationSeconds) + '</div>' +
+          '<div id="detailTimerDisplay_' + i + '" class="v4-display ' + self.timerClass(timer) + '">' + formatTime(timer.remainingSeconds != null ? timer.remainingSeconds : timer.durationSeconds) + '</div>' +
           '<div class="v4-timer-actions">' +
           '<button onclick="App.timer.startDetail(' + i + ')">▶ Iniciar</button>' +
           '<button onclick="App.timer.pauseDetail(' + i + ')">⏸ Pausar</button>' +
@@ -1029,6 +1026,10 @@ const Timer = {
   }
 };
 
+/* ============================================================
+   COOK MODE — MEJORADO v5.4
+   Salida robusta, TTS con cola, auto-lectura, teclado, swipe
+   ============================================================ */
 const CookMode = (() => {
   let wakeLock = null;
   let currentStep = 0;
@@ -1039,34 +1040,85 @@ const CookMode = (() => {
   let cookTimerInterval = null;
   let spanishVoice = null;
   let voicesLoaded = false;
+  let utteranceQueue = [];
+  let isSpeaking = false;
+  let swipeHandler = null;
+  let keyHandler = null;
 
-  // ========== TTS: Cargar voces españolas ==========
-  function loadVoices() {
+  /* ---------- TTS: Motor de voz mejorado ---------- */
+  function initVoices() {
     if (!('speechSynthesis' in window)) return;
-    const pickSpanish = (list) => {
-      return list.find(v => v.lang && v.lang.toLowerCase().startsWith('es')) ||
-             list.find(v => v.lang && v.lang.toLowerCase().includes('es')) ||
-             null;
-    };
-    const all = window.speechSynthesis.getVoices();
-    if (all && all.length) {
-      spanishVoice = pickSpanish(all);
-      voicesLoaded = true;
-    }
-    window.speechSynthesis.onvoiceschanged = function() {
-      const list = window.speechSynthesis.getVoices();
-      spanishVoice = pickSpanish(list);
-      voicesLoaded = true;
-    };
-  }
-  loadVoices();
 
-  async function requestWakeLock() {
-    try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', function() { wakeLock = null; }); } }
-    catch (e) {}
+    const pickBestVoice = (list) => {
+      const prefs = ['es-mx', 'es-es', 'es-ar', 'es-co', 'es-cl', 'es-us', 'es'];
+      for (const pref of prefs) {
+        const v = list.find(vo => vo.lang.toLowerCase().startsWith(pref));
+        if (v) return v;
+      }
+      return list.find(vo => vo.lang.toLowerCase().includes('es')) || null;
+    };
+
+    const load = () => {
+      const all = window.speechSynthesis.getVoices();
+      if (all && all.length) {
+        spanishVoice = pickBestVoice(all);
+        voicesLoaded = true;
+      }
+    };
+
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
   }
-  function releaseWakeLock() {
-    if (wakeLock) { wakeLock.release().catch(function() {}); wakeLock = null; }
+  initVoices();
+
+  /* ---------- TTS: Cola de utterances ---------- */
+  function enqueueSpeak(text) {
+    if (!text || !text.trim()) return;
+    utteranceQueue.push(text.trim());
+    processQueue();
+  }
+
+  function processQueue() {
+    if (isSpeaking || utteranceQueue.length === 0) return;
+    if (!window.speechSynthesis) return;
+
+    const text = utteranceQueue.shift();
+    isSpeaking = true;
+
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = spanishVoice ? spanishVoice.lang : 'es-MX';
+      u.rate = 0.9;
+      u.pitch = 1.0;
+      if (spanishVoice) u.voice = spanishVoice;
+
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+
+      u.onstart = () => {
+        if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.add('speaking');
+      };
+      u.onend = () => {
+        isSpeaking = false;
+        if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.remove('speaking');
+        setTimeout(processQueue, 150);
+      };
+      u.onerror = (err) => {
+        isSpeaking = false;
+        if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.remove('speaking');
+        if (err && err.error === 'not-allowed') {
+          Toast.show('Toca la pantalla primero para activar la voz', '👆');
+        } else if (err && err.error === 'canceled') {
+          // Normal si el usuario avanza rapido
+        } else {
+          console.warn('TTS error:', err);
+        }
+      };
+      window.speechSynthesis.speak(u);
+    } catch (err) {
+      isSpeaking = false;
+      console.error('TTS speak error:', err);
+    }
   }
 
   function speak(text) {
@@ -1074,33 +1126,37 @@ const CookMode = (() => {
       Toast.show('Tu navegador no soporta lectura de voz', '🔇');
       return;
     }
-    // Chrome bloquea TTS hasta primera interaccion; intentamos de todos modos
+    utteranceQueue = [];
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    enqueueSpeak(text);
+  }
+
+  function stopSpeaking() {
+    utteranceQueue = [];
+    isSpeaking = false;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.remove('speaking');
+  }
+
+  /* ---------- Wake Lock ---------- */
+  async function requestWakeLock() {
     try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'es-ES';
-      u.rate = 0.92;
-      u.pitch = 1.05;
-      if (spanishVoice) u.voice = spanishVoice;
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      }
+    } catch (e) { /* silencioso */ }
+  }
 
-      // Workaround para Chrome: a veces queda "paused"
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-
-      u.onstart = function() { if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.add('speaking'); };
-      u.onend = function() { if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.remove('speaking'); };
-      u.onerror = function(err) {
-        if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.remove('speaking');
-        // Si es error de "not-allowed", avisamos al usuario
-        if (err && err.error === 'not-allowed') {
-          Toast.show('Toca la pantalla primero para activar la voz', '👆');
-        }
-      };
-      window.speechSynthesis.speak(u);
-    } catch (err) {
-      Toast.show('No se pudo activar la voz. Toca la pantalla primero.', '🔇');
+  function releaseWakeLock() {
+    if (wakeLock) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
     }
   }
 
+  /* ---------- Utilidades ---------- */
   function extractMinutes(text) {
     const m = text.match(/(\d+)\s*(min|minuto|minutos)/i);
     if (m) return parseInt(m[1], 10);
@@ -1112,53 +1168,74 @@ const CookMode = (() => {
   function updateProgress() {
     const pct = steps.length ? ((currentStep + 1) / steps.length) * 100 : 0;
     if (DOM.cookProgressBar) DOM.cookProgressBar.style.width = pct + '%';
-    const dotsHtml = steps.map(function(_, i) { return '<span class="' + (i === currentStep ? 'active' : '') + '"></span>'; }).join('');
+
+    const dotsHtml = steps.map((_, i) =>
+      `<span class="${i === currentStep ? 'active' : ''} ${i < currentStep ? 'done' : ''}"></span>`
+    ).join('');
     if (DOM.cookDots) DOM.cookDots.innerHTML = dotsHtml;
     if (DOM.cookNavDots) DOM.cookNavDots.innerHTML = dotsHtml;
+
     if (DOM.cookPrevBtn) DOM.cookPrevBtn.disabled = currentStep === 0;
     if (DOM.cookNextBtn) {
       DOM.cookNextBtn.innerHTML = currentStep >= steps.length - 1
-        ? 'Finalizar <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>'
-        : 'Siguiente <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+        ? 'Finalizar <span>✓</span>'
+        : 'Siguiente <span>→</span>';
+      DOM.cookNextBtn.classList.toggle('finish-btn', currentStep >= steps.length - 1);
     }
   }
 
   function renderStep() {
     if (!DOM.cookStepText) return;
+
     if (currentStep >= steps.length) {
-      DOM.cookStepText.innerHTML = '<div class="cook-done"><div class="big-icon">&#127858;</div><h2>¡Listo!</h2><p>Todos los pasos completados. Buen provecho.</p></div>';
+      DOM.cookStepNum.textContent = '';
+      DOM.cookStepText.innerHTML = `
+        <div class="cook-finish">
+          <div class="cook-finish-icon">🍲</div>
+          <h2>¡Listo!</h2>
+          <p>Todos los pasos completados. Buen provecho.</p>
+        </div>`;
       return;
     }
+
     const stepText = steps[currentStep];
     const minutes = extractMinutes(stepText);
     let quickHtml = '';
     if (minutes && minutes > 0) {
-      quickHtml = '<button class="cook-quick-timer" onclick="App.cookMode.startQuickTimer(' + minutes + ')">⏱ Iniciar ' + minutes + ' min</button>';
+      quickHtml = `<button class="cook-quick-timer-btn" onclick="App.cookMode.startQuickTimer(${minutes})" aria-label="Iniciar timer de ${minutes} minutos">
+        ⏱️ ${minutes} min
+      </button>`;
     }
+
     DOM.cookStepNum.textContent = 'Paso ' + (currentStep + 1) + ' de ' + steps.length;
-    DOM.cookStepText.innerHTML = '<p style="font-size:22px;font-weight:500;line-height:1.6;color:var(--text);margin:0 0 16px">' + escapeHtml(stepText) + '</p>' + quickHtml;
+    DOM.cookStepText.innerHTML = '<p class="cook-step-line">' + escapeHtml(stepText) + '</p>' + quickHtml;
     DOM.cookStepText.classList.remove('prev');
     updateProgress();
   }
 
+  /* ---------- Timers en modo cocina ---------- */
   function renderCookTimers() {
     const recipe = State.recipe;
     if (!DOM.cookTimersList || !recipe) return;
     Storage.normalizeRecipe(recipe);
+
     if (!recipe.timers.length) {
-      DOM.cookTimersList.innerHTML = '<p style="color:var(--text-tert);font-size:13px;text-align:center;margin:0">No hay cronometros en esta receta</p>';
+      DOM.cookTimersList.innerHTML = '<p class="cook-empty-timers">No hay cronometros en esta receta</p>';
       return;
     }
-    DOM.cookTimersList.innerHTML = recipe.timers.map(function(timer, i) {
-      const cls = timer.remainingSeconds <= 0 && !timer.running ? 'finished' : (timer.remainingSeconds <= 60 && timer.running ? 'warning' : '');
-      return '<div class="cook-timer-row">' +
-        '<span class="ct-name">' + escapeHtml(timer.name || 'Timer') + '</span>' +
-        '<span class="ct-time ' + cls + '" id="cookTimerDisplay_' + i + '">' + formatTime(timer.remainingSeconds != null ? timer.remainingSeconds : timer.durationSeconds) + '</span>' +
-        '<div class="ct-actions">' +
-        '<button onclick="App.cookMode.startRecipeTimer(' + i + ')" class="primary">▶</button>' +
-        '<button onclick="App.cookMode.pauseRecipeTimer(' + i + ')">⏸</button>' +
-        '<button onclick="App.cookMode.resetRecipeTimer(' + i + ')">↺</button>' +
-        '</div></div>';
+
+    DOM.cookTimersList.innerHTML = recipe.timers.map((timer, i) => {
+      const cls = timer.remainingSeconds <= 0 && !timer.running ? 'finished'
+        : (timer.remainingSeconds <= 60 && timer.running ? 'warning' : '');
+      return `<div class="cook-timer-row">
+        <span class="ct-name">${escapeHtml(timer.name || 'Timer')}</span>
+        <span id="cookTimerDisplay_${i}" class="ct-time ${cls}">${formatTime(timer.remainingSeconds != null ? timer.remainingSeconds : timer.durationSeconds)}</span>
+        <div class="ct-actions">
+          <button onclick="App.cookMode.startRecipeTimer(${i})" aria-label="Iniciar">▶</button>
+          <button onclick="App.cookMode.pauseRecipeTimer(${i})" aria-label="Pausar">⏸</button>
+          <button onclick="App.cookMode.resetRecipeTimer(${i})" aria-label="Reiniciar">↺</button>
+        </div>
+      </div>`;
     }).join('');
   }
 
@@ -1166,12 +1243,18 @@ const CookMode = (() => {
     const recipe = State.recipe;
     if (!recipe) return;
     let changed = false;
-    recipe.timers.forEach(function(timer, i) {
+
+    recipe.timers.forEach((timer, i) => {
       if (timer.running && timer.endAt) {
         const remaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
-        if (remaining !== timer.remainingSeconds) { timer.remainingSeconds = remaining; changed = true; }
+        if (remaining !== timer.remainingSeconds) {
+          timer.remainingSeconds = remaining;
+          changed = true;
+        }
         if (remaining <= 0) {
-          timer.running = false; timer.endAt = 0; changed = true;
+          timer.running = false;
+          timer.endAt = 0;
+          changed = true;
           if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
           AudioEngine.timerDone();
           Toast.show('Cronometro terminado: ' + (timer.name || 'Listo'), '⏰');
@@ -1183,6 +1266,7 @@ const CookMode = (() => {
         display.className = 'ct-time ' + Timer.timerClass(timer);
       }
     });
+
     if (changed) Storage.saveDebounced();
   }
 
@@ -1190,13 +1274,18 @@ const CookMode = (() => {
     if (quickTimerRunning) return;
     quickTimerSeconds = minutes * 60;
     quickTimerRunning = true;
-    if (DOM.cookQuickDisplay) DOM.cookQuickDisplay.style.display = 'block';
+    if (DOM.cookQuickDisplay) {
+      DOM.cookQuickDisplay.style.display = 'block';
+      DOM.cookQuickDisplay.classList.add('active');
+    }
     updateQuickDisplay();
-    quickTimerInterval = setInterval(function() {
+    quickTimerInterval = setInterval(() => {
       quickTimerSeconds--;
       updateQuickDisplay();
       if (quickTimerSeconds <= 0) {
-        clearInterval(quickTimerInterval); quickTimerRunning = false;
+        clearInterval(quickTimerInterval);
+        quickTimerRunning = false;
+        if (DOM.cookQuickDisplay) DOM.cookQuickDisplay.classList.remove('active');
         if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]);
         AudioEngine.timerDone();
         Toast.show('¡Tiempo del paso terminado!', '⏰');
@@ -1208,39 +1297,15 @@ const CookMode = (() => {
     if (DOM.cookQuickDisplay) DOM.cookQuickDisplay.textContent = formatTime(quickTimerSeconds);
   }
 
-  function showIngredients() {
-    const recipe = State.recipe;
-    if (!recipe) return;
-    const lines = parseLines(recipe.ingredientes);
-    DOM.cookIngredientsList.innerHTML = lines.length ? lines.map(function(l) { return '<li>' + escapeHtml(l) + '</li>'; }).join('') : '<li>Sin ingredientes</li>';
-    DOM.cookIngredientsOverlay.classList.add('active');
-  }
-
-  function closeIngredients() {
-    if (DOM.cookIngredientsOverlay) DOM.cookIngredientsOverlay.classList.remove('active');
-  }
-
-  function setupSwipe() {
-    const body = DOM.cookBody;
-    if (!body) return;
-    let startX = 0;
-    body.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, { passive: true });
-    body.addEventListener('touchend', function(e) {
-      const diff = startX - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 60) {
-        if (diff > 0) next(); else prev();
-      }
-    }, { passive: true });
-  }
-
+  /* ---------- Navegacion de pasos ---------- */
   function next() {
     if (currentStep < steps.length - 1) {
       currentStep++;
       AudioEngine.tap();
       if (navigator.vibrate) navigator.vibrate(20);
       renderStep();
+      speakCurrentStep();
     } else if (currentStep === steps.length - 1) {
-      // Ultimo paso: finalizar y salir
       finishAndExit();
     }
   }
@@ -1251,95 +1316,226 @@ const CookMode = (() => {
       AudioEngine.tap();
       if (navigator.vibrate) navigator.vibrate(20);
       renderStep();
+      speakCurrentStep();
+    }
+  }
+
+  function speakCurrentStep() {
+    if (currentStep >= 0 && currentStep < steps.length) {
+      speak(steps[currentStep]);
     }
   }
 
   function finishAndExit() {
     currentStep = steps.length;
     renderStep();
+    stopSpeaking();
     AudioEngine.success();
     if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
-    // Auto-salir despues de 1.5s para que se vea el mensaje
-    setTimeout(function() {
-      doExit();
-    }, 1500);
+    setTimeout(() => { doExit(); }, 2000);
+  }
+
+  /* ---------- Gestos tactiles ---------- */
+  function setupSwipe() {
+    const body = DOM.cookBody;
+    if (!body) return;
+    let startX = 0;
+    let startY = 0;
+
+    swipeHandler = (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; };
+    body.addEventListener('touchstart', swipeHandler, { passive: true });
+
+    body.addEventListener('touchend', (e) => {
+      const diffX = startX - e.changedTouches[0].clientX;
+      const diffY = startY - e.changedTouches[0].clientY;
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+        if (diffX > 0) next(); else prev();
+      }
+    }, { passive: true });
+  }
+
+  function removeSwipe() {
+    const body = DOM.cookBody;
+    if (body && swipeHandler) {
+      body.removeEventListener('touchstart', swipeHandler);
+      swipeHandler = null;
+    }
+  }
+
+  /* ---------- Ingredientes overlay ---------- */
+  function showIngredients() {
+    const recipe = State.recipe;
+    if (!recipe) return;
+    const lines = parseLines(recipe.ingredientes);
+    DOM.cookIngredientsList.innerHTML = lines.length
+      ? lines.map(l => `<li>${escapeHtml(l)}</li>`).join('')
+      : '<li class="empty">Sin ingredientes</li>';
+    DOM.cookIngredientsOverlay.classList.add('active');
+  }
+
+  function closeIngredients() {
+    if (DOM.cookIngredientsOverlay) DOM.cookIngredientsOverlay.classList.remove('active');
   }
 
   function toggleTimersPanel() {
     if (DOM.cookTimersPanel) DOM.cookTimersPanel.classList.toggle('collapsed');
   }
 
-  // ========== SALIDA SEGURA ==========
+  /* ---------- DETECCION DE TIMERS ACTIVOS ---------- */
   function hasActiveTimers() {
     const recipe = State.recipe;
-    if (recipe && recipe.timers) {
-      if (recipe.timers.some(t => t.running)) return true;
-    }
+    if (recipe && recipe.timers && recipe.timers.some(t => t.running)) return true;
     return quickTimerRunning;
+  }
+
+  /* ---------- SALIDA ROBUSTA Y LIMPIA ---------- */
+  function pauseAllTimers() {
+    const recipe = State.recipe;
+    if (recipe && recipe.timers) {
+      recipe.timers.forEach(timer => {
+        if (timer.running && timer.endAt) {
+          timer.remainingSeconds = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
+        }
+        timer.running = false;
+        timer.endAt = 0;
+      });
+    }
+    if (quickTimerRunning && quickTimerInterval) {
+      clearInterval(quickTimerInterval);
+      quickTimerRunning = false;
+    }
+    Storage.saveDebounced();
   }
 
   function doExit() {
     _navLock = true;
-    releaseWakeLock();
-    if (quickTimerInterval) clearInterval(quickTimerInterval);
-    if (cookTimerInterval) clearInterval(cookTimerInterval);
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-    // Navegacion segura sin depender de backFromDetail
-    const pv = State.previousViewBeforeDetail;
-    if (pv) {
-      if (pv.type === 'category') App.recipe.showList('category', pv.id);
-      else if (pv.type === 'favorites') App.favorites.show();
-      else if (pv.type === 'search' && pv.query) App.search.handle(pv.query);
-      else Nav.home();
-      State.previousViewBeforeDetail = null;
-    } else {
-      Nav.home();
+    // 1. Pausar todos los timers correctamente
+    pauseAllTimers();
+
+    // 2. Detener TTS completamente
+    stopSpeaking();
+
+    // 3. Liberar wake lock
+    releaseWakeLock();
+
+    // 4. Limpiar todos los intervals
+    if (quickTimerInterval) { clearInterval(quickTimerInterval); quickTimerInterval = null; }
+    if (cookTimerInterval) { clearInterval(cookTimerInterval); cookTimerInterval = null; }
+
+    // 5. Remover listeners de gestos
+    removeSwipe();
+
+    // 6. Remover listener de teclado del modo cocina
+    if (keyHandler) {
+      document.removeEventListener('keydown', keyHandler);
+      keyHandler = null;
     }
-    _navLock = false;
+
+    // 7. Resetear estado interno
+    currentStep = 0;
+    steps = [];
+    quickTimerSeconds = 0;
+    quickTimerRunning = false;
+    utteranceQueue = [];
+    isSpeaking = false;
+
+    // 8. Ocultar overlays
+    closeIngredients();
+
+    // 9. Animacion de salida
+    const cookView = byId('view-cook-mode');
+    if (cookView) cookView.classList.add('exiting');
+
+    // 10. Navegacion segura con fallback
+    setTimeout(() => {
+      if (cookView) cookView.classList.remove('exiting');
+
+      const pv = State.previousViewBeforeDetail;
+      if (pv) {
+        if (pv.type === 'category') App.recipe.showList('category', pv.id);
+        else if (pv.type === 'favorites') App.favorites.show();
+        else if (pv.type === 'search' && pv.query) App.search.handle(pv.query);
+        else Nav.home();
+        State.previousViewBeforeDetail = null;
+      } else {
+        Nav.home();
+      }
+
+      _navLock = false;
+    }, 250);
   }
 
+  /* ---------- TECLADO EN MODO COCINA ---------- */
+  function setupKeyboard() {
+    keyHandler = (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+      else if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        speakCurrentStep();
+      }
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        exit();
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
+  }
+
+  /* ---------- API PUBLICA ---------- */
   return {
     enter() {
       const recipe = State.recipe;
       if (!recipe) return;
+
       steps = parseLines(recipe.pasos);
       currentStep = 0;
       quickTimerSeconds = 0;
       quickTimerRunning = false;
+      utteranceQueue = [];
+      isSpeaking = false;
+
       if (quickTimerInterval) clearInterval(quickTimerInterval);
       if (cookTimerInterval) clearInterval(cookTimerInterval);
+
       DOM.cookTitle.textContent = recipe.nombre;
       Nav.set('cook-mode');
+
       requestWakeLock();
       renderStep();
       renderCookTimers();
       setupSwipe();
+      setupKeyboard();
+
       cookTimerInterval = setInterval(updateCookTimers, 1000);
       updateCookTimers();
       Storage.ensureStepState(recipe);
+
+      // Auto-leer el primer paso despues de un pequeno delay
+      setTimeout(() => speakCurrentStep(), 600);
     },
 
     exit() {
       if (hasActiveTimers()) {
-        Modal.show('Salir del modo cocinar', 'Hay cronometros activos. ¿Seguro que quieres salir? Se pausaran.', function() {
-          doExit();
-        });
+        Modal.show('Salir del modo cocinar',
+          'Hay cronometros activos. ¿Seguro que quieres salir? Se pausaran y podras reanudarlos despues.',
+          () => { doExit(); });
         return;
       }
       doExit();
     },
 
-    next: next,
-    prev: prev,
-    speak: speak,
-    showIngredients: showIngredients,
-    closeIngredients: closeIngredients,
-    toggleTimersPanel: toggleTimersPanel,
-    startQuickTimer: startQuickTimer,
-    startRecipeTimer: function(i) { Timer.startDetail(i); updateCookTimers(); },
-    pauseRecipeTimer: function(i) { Timer.pauseDetail(i); updateCookTimers(); },
-    resetRecipeTimer: function(i) { Timer.resetDetail(i); updateCookTimers(); }
+    next,
+    prev,
+    speak: speakCurrentStep,
+    showIngredients,
+    closeIngredients,
+    toggleTimersPanel,
+    startQuickTimer,
+    startRecipeTimer(i) { Timer.startDetail(i); updateCookTimers(); },
+    pauseRecipeTimer(i) { Timer.pauseDetail(i); updateCookTimers(); },
+    resetRecipeTimer(i) { Timer.resetDetail(i); updateCookTimers(); }
   };
 })();
 
