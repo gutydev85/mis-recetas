@@ -286,6 +286,27 @@ const Nav = {
     if (!_navLock && State.currentView !== view && view !== 'home') {
       history.pushState({ from: State.currentView }, '', '');
     }
+
+    if (isDesktop()) {
+      const panelViews = ['recipe-detail', 'recipe-form', 'category-form', 'settings', 'cook-mode'];
+      panelViews.forEach(v => {
+        const el = byId('view-' + v);
+        if (el) el.classList.remove('active');
+      });
+      const el = byId('view-' + view);
+      if (el) el.classList.add('active');
+      const home = byId('view-home');
+      if (home) home.classList.add('active');
+      if (view !== 'home') {
+        const placeholder = byId('desktop-placeholder');
+        if (placeholder) placeholder.classList.remove('visible');
+      }
+      State.currentView = view;
+      if (DOM.app) DOM.app.scrollTop = 0;
+      document.title = 'Mi Recetario';
+      return;
+    }
+
     $$('.view').forEach(v => v.classList.remove('active'));
     const el = byId('view-' + view);
     if (el) el.classList.add('active');
@@ -295,29 +316,39 @@ const Nav = {
   },
 
   home() {
-   if (isDesktop()) {
-     $$('.view').forEach(v => {
-       if (v.id !== 'view-home') v.classList.remove('active');
-     });
-     const placeholder = byId('desktop-placeholder');
-     if (placeholder) placeholder.classList.add('visible');
-     const sidebarRecipes = byId('sidebar-recipes-wrap');
-     if (sidebarRecipes) sidebarRecipes.classList.add('hidden');
-     const homeView = byId('view-home');
-     if (homeView) homeView.classList.add('active');
-     State.currentView = 'home';
-     State.listFilter = { type: null, id: null, query: null };
-     App.render.categories();
-     return;
-   }
-   this.set('home'); App.render.categories();
- },
+    if (isDesktop()) {
+      $$('.view').forEach(v => {
+        if (v.id !== 'view-home') v.classList.remove('active');
+      });
+      const placeholder = byId('desktop-placeholder');
+      if (placeholder) placeholder.classList.add('visible');
+      const sidebarRecipes = byId('sidebar-recipes-wrap');
+      if (sidebarRecipes) sidebarRecipes.classList.add('hidden');
+      const homeView = byId('view-home');
+      if (homeView) homeView.classList.add('active');
+      State.currentView = 'home';
+      State.listFilter = { type: null, id: null, query: null };
+      App.render.categories();
+      return;
+    }
+    this.set('home'); App.render.categories();
+  },
 
   backFromDetail() {
     _navLock = true;
     App.timer.clearMainInterval();
     App.timer.clearDetailInterval();
     const pv = State.previousViewBeforeDetail;
+    if (isDesktop()) {
+      const detailView = byId('view-recipe-detail');
+      if (detailView) detailView.classList.remove('active');
+      const placeholder = byId('desktop-placeholder');
+      if (placeholder) placeholder.classList.add('visible');
+      State.currentView = 'home';
+      State.previousViewBeforeDetail = null;
+      _navLock = false;
+      return;
+    }
     if (pv) {
       if (pv.type === 'category') App.recipe.showList('category', pv.id);
       else if (pv.type === 'favorites') App.favorites.show();
@@ -335,6 +366,16 @@ const Nav = {
     if (State.cameFromDetail && State.editingRecipeId) {
       State.cameFromDetail = false;
       App.recipe.showDetail(State.editingRecipeId);
+      _navLock = false;
+      return;
+    }
+    if (isDesktop()) {
+      $$('.view').forEach(v => {
+        if (v.id !== 'view-home') v.classList.remove('active');
+      });
+      const placeholder = byId('desktop-placeholder');
+      if (placeholder) placeholder.classList.add('visible');
+      State.currentView = 'home';
       _navLock = false;
       return;
     }
@@ -479,6 +520,40 @@ const Search = {
       normalizeText(r.notaFinal).includes(needle)
     );
     State.listFilter = { type: 'search', id: null, query: trimmed };
+
+    if (isDesktop()) {
+      const sidebarWrap = byId('sidebar-recipes-wrap');
+      const sidebarList = byId('sidebar-recipes-list');
+      const sidebarTitle = byId('sidebar-recipes-title');
+      if (sidebarWrap) sidebarWrap.classList.remove('hidden');
+      if (sidebarTitle) sidebarTitle.textContent = 'Resultados';
+      if (sidebarList) {
+        sidebarList.innerHTML = '';
+        if (filtered.length === 0) {
+          sidebarList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#128269;</div><h3>Sin resultados</h3></div>';
+        } else {
+          const frag = document.createDocumentFragment();
+          filtered.forEach((recipe, i) => {
+            const c = State.categories.find(c => c.id === recipe.categoriaId);
+            const row = document.createElement('div');
+            row.className = 'recipe-row';
+            row.style.animationDelay = (i * 60) + 'ms';
+            row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
+              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
+              '<button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + (recipe.favorito ? '&#10084;&#65039;' : '&#129293;') + '</button>';
+            row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
+            frag.appendChild(row);
+          });
+          sidebarList.innerHTML = '';
+          sidebarList.appendChild(frag);
+        }
+      }
+      const placeholder = byId('desktop-placeholder');
+      if (placeholder) placeholder.classList.add('visible');
+      $$('.desktop-panel > .view').forEach(v => v.classList.remove('active'));
+      return;
+    }
+
     Nav.set('recipe-list');
     DOM.listTitle.textContent = 'Resultados';
     DOM.listFab.style.display = 'none';
@@ -496,10 +571,45 @@ const Search = {
 const Favorites = {
   show() {
     State.listFilter = { type: 'favorites', id: null, query: null };
+    const list = State.recipes.filter(r => r.favorito);
+
+    if (isDesktop()) {
+      const sidebarWrap = byId('sidebar-recipes-wrap');
+      const sidebarList = byId('sidebar-recipes-list');
+      const sidebarTitle = byId('sidebar-recipes-title');
+      if (sidebarWrap) sidebarWrap.classList.remove('hidden');
+      if (sidebarTitle) sidebarTitle.textContent = 'Favoritos';
+      if (sidebarList) {
+        sidebarList.innerHTML = '';
+        if (list.length === 0) {
+          sidebarList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#10084;&#65039;</div><h3>Sin favoritos</h3><p>Marca recetas con &#10084;&#65039;</p></div>';
+        } else {
+          const frag = document.createDocumentFragment();
+          list.forEach((recipe, i) => {
+            const c = State.categories.find(c => c.id === recipe.categoriaId);
+            const row = document.createElement('div');
+            row.className = 'recipe-row';
+            row.style.animationDelay = (i * 60) + 'ms';
+            row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
+              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
+              '<button class="fav-btn active" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">&#10084;&#65039;</button>';
+            row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
+            frag.appendChild(row);
+          });
+          sidebarList.innerHTML = '';
+          sidebarList.appendChild(frag);
+        }
+      }
+      const placeholder = byId('desktop-placeholder');
+      if (placeholder) placeholder.classList.add('visible');
+      $$('.desktop-panel > .view').forEach(v => v.classList.remove('active'));
+      return;
+    }
+
     Nav.set('recipe-list');
     DOM.listTitle.textContent = 'Favoritos';
     DOM.listFab.style.display = 'none';
-    Render.recipeList(State.recipes.filter(r => r.favorito));
+    Render.recipeList(list);
   },
 
   toggle(id) {
@@ -568,13 +678,47 @@ const Category = {
 const Recipe = {
   showList(type, id) {
     State.listFilter = { type: type, id: id, query: null };
-    Nav.set('recipe-list');
     const cat = State.categories.find(c => c.id === id);
-    DOM.listTitle.textContent = type === 'category' ? (cat ? cat.nombre : 'Sin categoria') : 'Recetas';
-    DOM.listFab.style.display = type === 'category' ? 'flex' : 'none';
     const list = type === 'category'
       ? State.recipes.filter(r => r.categoriaId === id)
       : State.recipes.slice();
+
+    if (isDesktop()) {
+      const sidebarWrap = byId('sidebar-recipes-wrap');
+      const sidebarList = byId('sidebar-recipes-list');
+      const sidebarTitle = byId('sidebar-recipes-title');
+      if (sidebarWrap) sidebarWrap.classList.remove('hidden');
+      if (sidebarTitle) sidebarTitle.textContent = type === 'category' ? (cat ? cat.nombre : 'Sin categoria') : 'Recetas';
+      if (sidebarList) {
+        sidebarList.innerHTML = '';
+        if (list.length === 0) {
+          sidebarList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#127859;</div><h3>No hay recetas</h3><p>Agrega la primera</p></div>';
+        } else {
+          const frag = document.createDocumentFragment();
+          list.forEach((recipe, i) => {
+            const c = State.categories.find(c => c.id === recipe.categoriaId);
+            const row = document.createElement('div');
+            row.className = 'recipe-row';
+            row.style.animationDelay = (i * 60) + 'ms';
+            row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
+              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
+              '<button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + (recipe.favorito ? '&#10084;&#65039;' : '&#129293;') + '</button>';
+            row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
+            frag.appendChild(row);
+          });
+          sidebarList.innerHTML = '';
+          sidebarList.appendChild(frag);
+        }
+      }
+      const placeholder = byId('desktop-placeholder');
+      if (placeholder) placeholder.classList.add('visible');
+      $$('.desktop-panel > .view').forEach(v => v.classList.remove('active'));
+      return;
+    }
+
+    Nav.set('recipe-list');
+    DOM.listTitle.textContent = type === 'category' ? (cat ? cat.nombre : 'Sin categoria') : 'Recetas';
+    DOM.listFab.style.display = type === 'category' ? 'flex' : 'none';
     Render.recipeList(list);
   },
 
@@ -1763,17 +1907,17 @@ function init() {
 
   setTimeout(hideSplash, 1800);
 
- if (isDesktop()) {
-   const placeholder = byId('desktop-placeholder');
-   if (placeholder) placeholder.classList.add('visible');
- }
+  if (isDesktop()) {
+    const placeholder = byId('desktop-placeholder');
+    if (placeholder) placeholder.classList.add('visible');
+  }
 
- window.addEventListener('resize', debounce(function() {
-   if (isDesktop()) {
-     const homeView = byId('view-home');
-     if (homeView) homeView.classList.add('active');
-   }
- }, 200));
+  window.addEventListener('resize', debounce(function() {
+    if (isDesktop()) {
+      const homeView = byId('view-home');
+      if (homeView) homeView.classList.add('active');
+    }
+  }, 200));
 }
 
 window.App = {

@@ -2731,152 +2731,6 @@ html, body {
    ============================================================ */
 
 /* Solo aplicar en pantallas grandes */
-@media (min-width: 900px) {
-  /* Layout base de 2 columnas */
-  #app {
-    max-width: 100%;
-    width: 100%;
-    margin: 0;
-    display: grid;
-    grid-template-columns: 360px 1fr;
-    grid-template-rows: 1fr;
-    height: 100vh;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-  }
-
-  /* Sidebar izquierdo: siempre visible con el home */
-  #view-home {
-    display: flex !important;
-    border-right: 1px solid var(--border);
-    height: 100%;
-    overflow: hidden;
-  }
-  #view-home .content {
-    padding: 16px;
-  }
-  #view-home .header {
-    padding: 14px 16px;
-  }
-
-  /* Panel derecho: contenedor para listas y detalles */
-  #view-recipe-list,
-  #view-recipe-detail {
-    grid-column: 2;
-    grid-row: 1;
-    height: 100%;
-    z-index: 1;
-  }
-
-  /* Cuando no hay nada seleccionado, mostrar placeholder en el panel derecho */
-  .desktop-empty-state {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-dim);
-    font-size: 15px;
-    text-align: center;
-    padding: 40px;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .desktop-empty-state .big-icon {
-    font-size: 64px;
-    opacity: 0.2;
-  }
-
-  /* En desktop, las vistas de lista y detalle comparten el mismo espacio */
-  #view-recipe-list:not(.active),
-  #view-recipe-detail:not(.active) {
-    display: none;
-  }
-  #view-recipe-list.active,
-  #view-recipe-detail.active {
-    display: flex;
-  }
-
-  /* Ajustes del header en el panel derecho */
-  #view-recipe-list .header,
-  #view-recipe-detail .header {
-    padding: 14px 20px;
-  }
-  #view-recipe-detail .header-transparent {
-    position: absolute;
-  }
-
-  /* Contenido del panel derecho */
-  #view-recipe-list .content,
-  #view-recipe-detail .content {
-    padding: 20px;
-  }
-
-  /* Lista de recetas en el panel derecho */
-  #view-recipe-list .recipe-row {
-    padding: 14px 90px 14px 14px;
-  }
-
-  /* Detalle: foto mas alta */
-  #view-recipe-detail .detail-photo {
-    height: 300px;
-  }
-  #view-recipe-detail .detail-photo-placeholder {
-    height: 200px;
-  }
-
-  /* FAB reposicionado al panel derecho */
-  #view-recipe-list .fab {
-    right: 24px;
-    bottom: 24px;
-  }
-
-  /* Las demas vistas (form, settings, cook-mode) siguen siendo fullscreen */
-  #view-recipe-form,
-  #view-category-form,
-  #view-settings,
-  #view-cook-mode {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    grid-column: 1 / -1;
-    max-width: 720px;
-    margin: 0 auto;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
-    box-shadow: 0 0 60px rgba(0,0,0,0.5);
-  }
-
-  /* Scrollbar mas visible en desktop */
-  ::-webkit-scrollbar {
-    width: 5px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-hover);
-    border-radius: 10px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tert);
-  }
-
-  /* Hover refinado en desktop */
-  @media (hover: hover) {
-    .recipe-row .fav-btn {
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.25s var(--ease-spring);
-    }
-    .recipe-row:hover .fav-btn {
-      opacity: 1;
-    }
-  }
-}
-
-/* Pantallas muy grandes: sidebar mas ancho */
-@media (min-width: 1200px) {
-  #app {
-    grid-template-columns: 400px 1fr;
-  }
-}
-
 
 /* ============================================================
    LAYOUT TIPO WHATSAPP PARA ESCRITORIO
@@ -2884,15 +2738,18 @@ html, body {
    Panel derecho: detalle, formularios, ajustes, modo cocinar
    ============================================================ */
 
+/* En movil: los wrappers no afectan el layout */
 .desktop-sidebar,
 .desktop-panel {
   display: contents;
 }
 
+/* Placeholder del panel derecho (solo desktop) */
 .desktop-placeholder {
   display: none;
 }
 
+/* Lista de recetas en el sidebar (solo desktop) */
 #sidebar-recipes-wrap {
   display: none;
 }
@@ -2915,6 +2772,7 @@ html, body {
     overflow: hidden;
   }
 
+  /* Sidebar izquierdo */
   .desktop-sidebar {
     display: flex;
     flex-direction: column;
@@ -2943,6 +2801,7 @@ html, body {
     padding: 16px;
   }
 
+  /* Lista de recetas en el sidebar */
   #sidebar-recipes-wrap {
     display: block;
     margin-top: 8px;
@@ -2970,6 +2829,7 @@ html, body {
     height: 30px;
   }
 
+  /* Panel derecho */
   .desktop-panel {
     display: flex;
     flex-direction: column;
@@ -2979,6 +2839,7 @@ html, body {
     background: var(--bg);
   }
 
+  /* Placeholder cuando no hay nada seleccionado */
   .desktop-placeholder {
     display: none;
     flex-direction: column;
@@ -3012,6 +2873,7 @@ html, body {
     line-height: 1.5;
   }
 
+  /* Las vistas del panel derecho */
   .desktop-panel > .view {
     display: none;
     flex-direction: column;
@@ -3022,13 +2884,17 @@ html, body {
     display: flex;
   }
 
+  /* En desktop, view-recipe-list no se usa (las recetas van al sidebar) */
   #view-recipe-list {
     display: none !important;
   }
 
+  /* Detalle en el panel derecho */
   #view-recipe-detail .header-transparent {
     position: absolute;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
   }
   #view-recipe-detail .detail-photo {
     height: 280px;
@@ -3043,6 +2909,7 @@ html, body {
     font-size: 30px;
   }
 
+  /* Formularios en el panel derecho */
   #view-recipe-form .content,
   #view-category-form .content,
   #view-settings .content {
@@ -3052,22 +2919,26 @@ html, body {
     width: 100%;
   }
 
+  /* Modo cocinar en el panel derecho */
   #view-cook-mode {
     position: absolute;
     inset: 0;
     z-index: 30;
   }
 
+  /* FAB reposicionado */
   .fab {
     bottom: 24px;
     right: 24px;
   }
 
+  /* Modal centrado en el panel derecho */
   #modalOverlay {
     position: fixed;
     inset: 0;
   }
 
+  /* Scrollbar mas visible */
   ::-webkit-scrollbar {
     width: 5px;
   }
@@ -3079,6 +2950,7 @@ html, body {
     background: var(--text-tert);
   }
 
+  /* Hover refinado */
   @media (hover: hover) {
     .recipe-row .fav-btn {
       opacity: 0;
@@ -3093,6 +2965,7 @@ html, body {
   }
 }
 
+/* Pantallas muy grandes */
 @media (min-width: 1200px) {
   #app {
     grid-template-columns: 420px 1fr;
