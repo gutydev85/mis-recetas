@@ -334,35 +334,47 @@
       <div class="settings-group">
         <div class="settings-group-title">Tus datos</div>
         <div class="settings-row" onclick="App.data.export()">
-          <div>
+          <div class="settings-row-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+          </div>
+          <div class="settings-row-content">
             <div class="label">Exportar recetas</div>
             <div class="desc">Descarga un archivo JSON de respaldo</div>
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+          <svg class="settings-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </div>
         <div class="settings-row">
-          <div>
+          <div class="settings-row-icon import-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+          </div>
+          <div class="settings-row-content">
             <div class="label">Importar recetas</div>
             <div class="desc">Restaura desde un archivo de backup</div>
           </div>
-          <label style="cursor:pointer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+          <label style="cursor:pointer;display:flex;align-items:center">
+            <svg class="settings-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
             <input type="file" accept="application/json" style="display:none" onchange="App.data.import(this)">
           </label>
         </div>
         <div class="settings-row danger" onclick="App.data.confirmClear()">
-          <div>
+          <div class="settings-row-icon danger-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </div>
+          <div class="settings-row-content">
             <div class="label">Borrar todo</div>
             <div class="desc">Elimina todas las recetas y categorias</div>
           </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          <svg class="settings-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
         </div>
       </div>
 
       <div class="settings-group">
         <div class="settings-group-title">Preferencias</div>
         <div class="settings-row" onclick="App.settings.toggleSound()">
-          <div>
+          <div class="settings-row-icon sound-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </div>
+          <div class="settings-row-content">
             <div class="label">Efectos de sonido</div>
             <div class="desc" id="soundDesc">Activados</div>
           </div>
@@ -370,24 +382,44 @@
         </div>
       </div>
 
-      <div class="settings-group">
-        <div class="settings-group-title">Acerca de</div>
-        <div class="settings-row-static">
-          <div>
-            <div class="label">Version</div>
-            <div class="desc">5.4 — Diseno renovado</div>
+      <!-- About Card -->
+      <div class="about-card">
+        <div class="about-header">
+          <div class="about-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+          </div>
+          <div class="about-title-wrap">
+            <div class="about-title">Mi Recetario</div>
+            <div class="about-version">v5.4 · Julio 2026</div>
           </div>
         </div>
-        <div class="settings-row-static">
-          <div>
-            <div class="label">Almacenamiento</div>
-            <div class="desc">Tus datos viven solo en este dispositivo</div>
-          </div>
+        <p class="about-desc">Tu cocina, tu ritmo. Guarda tus recetas favoritas, organizalas por categorias y cocina con el modo paso a paso. Todo funciona sin conexion y tus datos nunca salen de tu dispositivo.</p>
+        <div class="about-badges">
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Privado
+          </span>
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/><path d="M8.5 8.5v.01"/><path d="M16 15.5v.01"/><path d="M12 12v.01"/></svg>
+            Sin anuncios
+          </span>
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
+            PWA Offline
+          </span>
         </div>
-        <div class="settings-row-static">
-          <div>
-            <div class="label">Tipo</div>
-            <div class="desc">PWA — Funciona sin conexion</div>
+        <div class="about-footer">
+          <div class="about-stat">
+            <span class="about-stat-value" id="aboutStatRecipes">0</span>
+            <span class="about-stat-label">Recetas</span>
+          </div>
+          <div class="about-stat">
+            <span class="about-stat-value" id="aboutStatCategories">0</span>
+            <span class="about-stat-label">Categorias</span>
+          </div>
+          <div class="about-stat">
+            <span class="about-stat-value" id="aboutStatFavorites">0</span>
+            <span class="about-stat-label">Favoritas</span>
           </div>
         </div>
       </div>
