@@ -299,10 +299,15 @@ const Nav = {
      $$('.view').forEach(v => {
        if (v.id !== 'view-home') v.classList.remove('active');
      });
+     const placeholder = byId('desktop-placeholder');
+     if (placeholder) placeholder.classList.add('visible');
+     const sidebarRecipes = byId('sidebar-recipes-wrap');
+     if (sidebarRecipes) sidebarRecipes.classList.add('hidden');
+     const homeView = byId('view-home');
+     if (homeView) homeView.classList.add('active');
      State.currentView = 'home';
      State.listFilter = { type: null, id: null, query: null };
      App.render.categories();
-     showDesktopPlaceholder();
      return;
    }
    this.set('home'); App.render.categories();
@@ -1759,26 +1764,16 @@ function init() {
   setTimeout(hideSplash, 1800);
 
  if (isDesktop()) {
-   showDesktopPlaceholder();
+   const placeholder = byId('desktop-placeholder');
+   if (placeholder) placeholder.classList.add('visible');
  }
 
  window.addEventListener('resize', debounce(function() {
    if (isDesktop()) {
      const homeView = byId('view-home');
      if (homeView) homeView.classList.add('active');
-     if (State.currentView === 'home') {
-       showDesktopPlaceholder();
-     }
    }
  }, 200));
-}
-
-function showDesktopPlaceholder() {
-  if (!isDesktop()) return;
-  const listView = byId('view-recipe-list');
-  const detailView = byId('view-recipe-detail');
-  if (listView) listView.classList.remove('active');
-  if (detailView) detailView.classList.remove('active');
 }
 
 window.App = {
