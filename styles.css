@@ -2723,3 +2723,139 @@ html, body {
   box-shadow: var(--shadow);
   border-color: var(--border-hover);
 }
+
+
+/* ============================================================
+   MEJORAS PARA ESCRITORIO — v5.5
+   Mismo diseño, mejor aprovechamiento del espacio en PC
+   ============================================================ */
+
+/* Fondo sutil para la ventana del navegador en desktop */
+@media (min-width: 768px) {
+  html, body {
+    background: linear-gradient(135deg, #0a0807 0%, #141210 50%, #0c0a09 100%);
+  }
+  #app {
+    box-shadow: 0 0 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,124,0.04);
+  }
+}
+
+/* Layout de 2 columnas en tablets y laptops */
+@media (min-width: 900px) {
+  #app {
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .header, .header-hero {
+    grid-column: 1 / -1;
+  }
+  .content {
+    padding: 20px;
+  }
+  .recipe-row {
+    padding-right: 110px;
+  }
+  .recipe-row .recipe-thumb,
+  .recipe-row .recipe-thumb-placeholder {
+    width: 56px;
+    height: 56px;
+  }
+  .recipe-row .title {
+    font-size: 16px;
+  }
+}
+
+/* Layout de 3 columnas en pantallas ultra-wide */
+@media (min-width: 1280px) {
+  #app {
+    max-width: 1200px;
+    grid-template-columns: 300px 1fr 300px;
+  }
+  .header {
+    grid-column: 1 / -1;
+  }
+  .sidebar-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border-left: 1px solid var(--border);
+  }
+}
+
+/* Tipografia mas grande en pantallas grandes */
+@media (min-width: 900px) {
+  html {
+    font-size: 16px;
+  }
+  .detail-header h1 {
+    font-size: 32px;
+  }
+  .timer-display {
+    font-size: 56px;
+  }
+  .splash-title {
+    font-size: 36px;
+  }
+}
+
+/* Hover mas refinado en desktop (no tactil) */
+@media (hover: hover) {
+  .category-card {
+    transition: all 0.35s var(--ease-out);
+  }
+  .recipe-row {
+    transition: all 0.35s var(--ease-out);
+  }
+  .recipe-row .fav-btn {
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.25s var(--ease-spring);
+  }
+  .recipe-row:hover .fav-btn {
+    opacity: 1;
+  }
+}
+
+/* Scrollbar mas elegante en desktop */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-hover);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tert);
+  }
+}
+
+/* Modal mas espacioso en desktop */
+@media (min-width: 768px) {
+  .modal {
+    max-width: 420px;
+    padding: 32px;
+  }
+  .modal h3 {
+    font-size: 20px;
+  }
+}
+
+/* Modo cocinar mejorado en desktop */
+@media (min-width: 900px) {
+  .cook-step-text {
+    font-size: 28px;
+    max-width: 700px;
+  }
+  .cook-nav {
+    padding: 16px 32px 28px;
+    gap: 16px;
+  }
+  .cook-nav button {
+    max-width: 300px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
