@@ -74,6 +74,10 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+function isDesktop() {
+  return window.innerWidth >= 900;
+}
+
 function generateId(prefix) {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
@@ -290,7 +294,19 @@ const Nav = {
     document.title = 'Mi Recetario';
   },
 
-  home() { this.set('home'); App.render.categories(); },
+  home() {
+   if (isDesktop()) {
+     $$('.view').forEach(v => {
+       if (v.id !== 'view-home') v.classList.remove('active');
+     });
+     State.currentView = 'home';
+     State.listFilter = { type: null, id: null, query: null };
+     App.render.categories();
+     showDesktopPlaceholder();
+     return;
+   }
+   this.set('home'); App.render.categories();
+ },
 
   backFromDetail() {
     _navLock = true;
@@ -1741,6 +1757,28 @@ function init() {
   });
 
   setTimeout(hideSplash, 1800);
+
+ if (isDesktop()) {
+   showDesktopPlaceholder();
+ }
+
+ window.addEventListener('resize', debounce(function() {
+   if (isDesktop()) {
+     const homeView = byId('view-home');
+     if (homeView) homeView.classList.add('active');
+     if (State.currentView === 'home') {
+       showDesktopPlaceholder();
+     }
+   }
+ }, 200));
+}
+
+function showDesktopPlaceholder() {
+  if (!isDesktop()) return;
+  const listView = byId('view-recipe-list');
+  const detailView = byId('view-recipe-detail');
+  if (listView) listView.classList.remove('active');
+  if (detailView) detailView.classList.remove('active');
 }
 
 window.App = {
