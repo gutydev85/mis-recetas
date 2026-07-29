@@ -2727,135 +2727,244 @@ html, body {
 
 /* ============================================================
    MEJORAS PARA ESCRITORIO — v5.5
-   Mismo diseño, mejor aprovechamiento del espacio en PC
+   Se adapta al ancho, no queda flotando con bordes vacios
    ============================================================ */
 
-/* Fondo sutil para la ventana del navegador en desktop */
+/* Tablets y laptops: app mas ancha */
 @media (min-width: 768px) {
-  html, body {
-    background: linear-gradient(135deg, #0a0807 0%, #141210 50%, #0c0a09 100%);
-  }
   #app {
-    box-shadow: 0 0 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,124,0.04);
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    height: 100vh;
   }
-}
 
-/* Layout de 2 columnas en tablets y laptops */
-@media (min-width: 900px) {
-  #app {
-    max-width: 960px;
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    grid-template-rows: auto 1fr;
+  html, body {
+    background: var(--bg);
   }
-  .header, .header-hero {
-    grid-column: 1 / -1;
+
+  /* Header mas espacioso */
+  .header {
+    padding: 16px 32px;
   }
+  .header-hero {
+    padding: 28px 32px 22px;
+  }
+
+  /* Contenido con mas aire */
   .content {
-    padding: 20px;
+    padding: 24px 32px;
+  }
+
+  /* Quick actions mas grandes */
+  .quick-actions {
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .qa-btn {
+    padding: 18px 12px;
+    font-size: 13px;
+  }
+  .qa-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+
+  /* Stats mas espaciados */
+  .stats-bar {
+    gap: 32px;
+    margin-bottom: 28px;
+  }
+
+  /* Categorias en grid de 2 columnas */
+  #categoriesList {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .category-card {
+    margin-bottom: 0;
+  }
+
+  /* Recetas en grid de 2 columnas */
+  #recipeListContainer {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
   .recipe-row {
-    padding-right: 110px;
+    margin-bottom: 0;
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
   .recipe-row .recipe-thumb,
   .recipe-row .recipe-thumb-placeholder {
-    width: 56px;
-    height: 56px;
+    width: 100%;
+    height: 140px;
+    border-radius: var(--radius-sm);
+  }
+  .recipe-row .info {
+    width: 100%;
   }
   .recipe-row .title {
+    white-space: normal;
+    font-size: 15px;
+  }
+  .recipe-row .meta {
+    font-size: 12px;
+  }
+  .recipe-row .fav-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(12,10,9,0.7);
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    opacity: 1;
+  }
+  .recipe-row .row-actions {
+    position: static;
+    transform: none;
+    margin-top: 8px;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* FAB reposicionado */
+  .fab {
+    bottom: 32px;
+    right: 32px;
+    width: 64px;
+    height: 64px;
+  }
+
+  /* Formularios mas amplios */
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 16px 18px;
     font-size: 16px;
   }
-}
 
-/* Layout de 3 columnas en pantallas ultra-wide */
-@media (min-width: 1280px) {
-  #app {
-    max-width: 1200px;
-    grid-template-columns: 300px 1fr 300px;
+  /* Detalle de receta: foto mas alta */
+  .detail-photo {
+    height: 340px;
   }
-  .header {
-    grid-column: 1 / -1;
-  }
-  .sidebar-right {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
-    border-left: 1px solid var(--border);
-  }
-}
-
-/* Tipografia mas grande en pantallas grandes */
-@media (min-width: 900px) {
-  html {
-    font-size: 16px;
+  .detail-photo-placeholder {
+    height: 240px;
   }
   .detail-header h1 {
     font-size: 32px;
   }
+
+  /* Timer mas grande */
   .timer-display {
-    font-size: 56px;
+    font-size: 64px;
   }
-  .splash-title {
-    font-size: 36px;
+  .timer-box {
+    padding: 36px 28px;
   }
-}
 
-/* Hover mas refinado en desktop (no tactil) */
-@media (hover: hover) {
-  .category-card {
-    transition: all 0.35s var(--ease-out);
-  }
-  .recipe-row {
-    transition: all 0.35s var(--ease-out);
-  }
-  .recipe-row .fav-btn {
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.25s var(--ease-spring);
-  }
-  .recipe-row:hover .fav-btn {
-    opacity: 1;
-  }
-}
-
-/* Scrollbar mas elegante en desktop */
-@media (min-width: 768px) {
-  ::-webkit-scrollbar {
-    width: 5px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-hover);
-    border-radius: 10px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tert);
-  }
-}
-
-/* Modal mas espacioso en desktop */
-@media (min-width: 768px) {
+  /* Modal centrado y mas grande */
   .modal {
-    max-width: 420px;
+    max-width: 480px;
+    padding: 36px;
+  }
+
+  /* Settings en grid */
+  .settings-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    background: var(--surface);
+  }
+  .settings-group-title {
+    grid-column: 1 / -1;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .settings-row,
+  .settings-row-static {
+    border-bottom: none;
+    padding: 12px;
+    border-radius: var(--radius-xs);
+    background: var(--bg-elevated);
+  }
+  .settings-row:hover {
+    padding-left: 12px;
+  }
+
+  /* About card mas ancho */
+  .about-card {
     padding: 32px;
   }
-  .modal h3 {
-    font-size: 20px;
+  .about-desc {
+    font-size: 15px;
   }
-}
 
-/* Modo cocinar mejorado en desktop */
-@media (min-width: 900px) {
+  /* Cook mode mejorado */
   .cook-step-text {
-    font-size: 28px;
-    max-width: 700px;
+    font-size: 26px;
+    max-width: 800px;
+    padding: 0 40px;
   }
   .cook-nav {
-    padding: 16px 32px 28px;
+    padding: 16px 40px 28px;
     gap: 16px;
   }
   .cook-nav button {
-    max-width: 300px;
+    max-width: 400px;
     margin: 0 auto;
     width: 100%;
+  }
+  .cook-header {
+    padding: 14px 32px;
+  }
+
+  /* Toast mas grande */
+  .toast {
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+}
+
+/* Pantallas muy grandes: 3 columnas */
+@media (min-width: 1200px) {
+  #categoriesList {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  #recipeListContainer {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .recipe-row .recipe-thumb,
+  .recipe-row .recipe-thumb-placeholder {
+    height: 160px;
+  }
+  .header {
+    padding: 18px 48px;
+  }
+  .content {
+    padding: 28px 48px;
+  }
+  .cook-step-text {
+    font-size: 30px;
+  }
+}
+
+/* Hover refinado solo en desktop con mouse */
+@media (hover: hover) {
+  .recipe-row .fav-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .recipe-row:hover .fav-btn {
+    opacity: 1;
   }
 }
