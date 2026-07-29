@@ -2223,3 +2223,177 @@ html, body {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ===== ICONOS SVG PROFESIONALES - MEJORAS VISUALES ===== */
+
+/* Toast con icono */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#toastIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+#toastIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Modal icono */
+.modal-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Install banner icono */
+.install-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+}
+.install-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Quick actions iconos */
+.qa-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+.qa-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.qa-btn:hover .qa-icon { 
+  background: rgba(255,255,255,0.12); 
+  transform: translateY(-2px); 
+}
+.qa-fav { color: #f87171; }
+.qa-cat { color: #60a5fa; }
+.qa-add { color: #4ade80; }
+
+/* Clear button search */
+.clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+.clear-btn:hover { 
+  background: rgba(255,255,255,0.1); 
+  color: #fff; 
+}
+.clear-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* FAB */
+.fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Timer controls */
+.timer-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.timer-controls button svg {
+  width: 12px;
+  height: 12px;
+}
+#timerPlayBtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Detail time icon */
+.detail-time svg {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* Chef note icon */
+.chef-note svg {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* News tag icon */
+.news-tag svg {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* Cook nav icons */
+.cook-nav button svg {
+  vertical-align: middle;
+}
+
+/* Header btn icons */
+.header-btn svg {
+  display: block;
+}
+
+/* Action bar buttons */
+.action-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.action-bar button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Cook finish icon */
+.cook-finish-icon svg {
+  width: 48px;
+  height: 48px;
+}

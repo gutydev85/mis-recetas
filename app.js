@@ -3,6 +3,26 @@
 
 'use strict';
 
+const Icons = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+  error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+  warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  alarm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
+  sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  pointer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
+  pot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="m4 8 16-4"/><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  stopwatch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M16 2v2"/><path d="M8 2v2"/></svg>'
+};
+
+
+
 const CONFIG = {
   VERSION: 5.4,
   STORAGE_KEYS: {
@@ -195,7 +215,7 @@ const Storage = {
       localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
     } catch (e) {
       console.error(e);
-      App.toast.show('Error guardando. Espacio lleno?', '⚠️');
+      App.toast.show('Error guardando. Espacio lleno?', Icons.warning);
     }
   },
 
@@ -311,7 +331,7 @@ const Toast = {
   show(msg, icon) {
     icon = icon || '';
     if (!DOM.toast) return;
-    DOM.toastIcon.textContent = icon;
+    DOM.toastIcon.innerHTML = icon;
     DOM.toastText.textContent = msg;
     DOM.toast.classList.add('show');
     clearTimeout(this._t);
@@ -367,7 +387,7 @@ const Render = {
         card.innerHTML = '<div class="icon-wrap">' + ICONS.folder + '</div>' +
           '<div><div class="name">' + escapeHtml(cat.nombre) + '</div>' +
           '<div class="count">' + count + ' receta' + (count !== 1 ? 's' : '') + '</div></div>' +
-          '<div class="cat-actions"><button class="header-btn" onclick="App.category.form(\'' + cat.id + '\');event.stopPropagation();">✏️</button></div>';
+          '<div class="cat-actions"><button class="header-btn" onclick="App.category.form(\'' + cat.id + '\');event.stopPropagation();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>';
         card.addEventListener('click', () => App.recipe.showList('category', cat.id));
         frag.appendChild(card);
       });
@@ -497,7 +517,7 @@ const Category = {
 
   save() {
     const name = DOM.catNameInput ? DOM.catNameInput.value.trim() : '';
-    if (!name) { Toast.show('Ingresa un nombre', '⚠️'); AudioEngine.error(); if (DOM.catNameInput) DOM.catNameInput.focus(); return; }
+    if (!name) { Toast.show('Ingresa un nombre', Icons.warning); AudioEngine.error(); if (DOM.catNameInput) DOM.catNameInput.focus(); return; }
     if (State.editingCategoryId) {
       const cat = State.category;
       if (cat) cat.nombre = name;
@@ -505,7 +525,7 @@ const Category = {
       State.categories.push({ id: generateId('c'), nombre: name });
     }
     Storage.save(); Render.categories(); Nav.home();
-    Toast.show(State.editingCategoryId ? 'Categoria actualizada' : 'Categoria creada', '✅');
+    Toast.show(State.editingCategoryId ? 'Categoria actualizada' : 'Categoria creada', Icons.check);
     AudioEngine.success();
   },
 
@@ -519,7 +539,7 @@ const Category = {
         State.recipes.forEach(function(r) { if (r.categoriaId === State.editingCategoryId) r.categoriaId = ''; });
         State.categories = State.categories.filter(function(c) { return c.id !== State.editingCategoryId; });
         Storage.save(); Render.categories(); Nav.home();
-        Toast.show('Categoria eliminada', '🗑️');
+        Toast.show('Categoria eliminada', Icons.trash);
       });
   }
 };
@@ -666,8 +686,8 @@ const Recipe = {
     const notaFinal = DOM.recipeFinalNote.value.trim();
     const timers = App.timer.readEditor();
 
-    if (!nombre) { Toast.show('La receta necesita un nombre', '⚠️'); AudioEngine.error(); DOM.recipeName.focus(); return; }
-    if (tiempoVal && (isNaN(tiempo) || tiempo < 0)) { Toast.show('El tiempo debe ser un numero valido', '⚠️'); AudioEngine.error(); DOM.recipeTime.focus(); return; }
+    if (!nombre) { Toast.show('La receta necesita un nombre', Icons.warning); AudioEngine.error(); DOM.recipeName.focus(); return; }
+    if (tiempoVal && (isNaN(tiempo) || tiempo < 0)) { Toast.show('El tiempo debe ser un numero valido', Icons.warning); AudioEngine.error(); DOM.recipeTime.focus(); return; }
 
     if (State.editingRecipeId) {
       const recipe = State.recipes.find(r => r.id === State.editingRecipeId);
@@ -697,7 +717,7 @@ const Recipe = {
       State.recipes.push(newRecipe);
     }
     Storage.save();
-    Toast.show(State.editingRecipeId ? 'Receta actualizada' : 'Receta guardada', '✅');
+    Toast.show(State.editingRecipeId ? 'Receta actualizada' : 'Receta guardada', Icons.check);
     AudioEngine.success();
     Nav.backFromForm();
   },
@@ -712,7 +732,7 @@ const Recipe = {
       Storage.save();
       if (State.currentView === 'recipe-detail') Nav.backFromDetail();
       else Nav.backFromForm();
-      Toast.show('Receta eliminada', '🗑️');
+      Toast.show('Receta eliminada', Icons.trash);
       AudioEngine.delete();
     });
   },
@@ -739,7 +759,7 @@ const Photo = {
     const file = input.files[0];
     if (!file) return;
     if (file.size > CONFIG.MAX_PHOTO_MB * 1024 * 1024) {
-      Toast.show('La foto es muy grande. Max: 5MB', '⚠️');
+      Toast.show('La foto es muy grande. Max: 5MB', Icons.warning);
       input.value = '';
       return;
     }
@@ -759,7 +779,7 @@ const Photo = {
         DOM.photoPreview.classList.add('visible');
         DOM.photoBtnText.textContent = 'Cambiar foto';
       };
-      img.onerror = function() { DOM.photoBtnText.textContent = 'Anadir foto'; Toast.show('Error al cargar la imagen', '❌'); };
+      img.onerror = function() { DOM.photoBtnText.textContent = 'Anadir foto'; Toast.show('Error al cargar la imagen', Icons.error); };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
@@ -777,7 +797,7 @@ const Timer = {
         '<div class="v4-time-row">' +
         '<input type="number" class="v4-timer-min" placeholder="Min" min="0" value="' + Math.floor((t.durationSeconds || 0) / 60) + '">' + ':' +
         '<input type="number" class="v4-timer-sec" placeholder="Seg" min="0" max="59" value="' + ((t.durationSeconds || 0) % 60) + '">' +
-        '<button class="header-btn" onclick="App.timer.removeEditor(' + i + ')">🗑️</button>' +
+        '<button class="header-btn" onclick="App.timer.removeEditor(' + i + ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
         '</div></div>';
     }).join('');
   },
@@ -821,7 +841,7 @@ const Timer = {
     } else {
       document.title = 'Mi Recetario';
     }
-    DOM.timerPlayBtn.textContent = State.mainTimer.running ? '⏸' : '▶';
+    DOM.timerPlayBtn.innerHTML = State.mainTimer.running ? Icons.pause : Icons.play;
   },
 
   toggle() {
@@ -917,7 +937,7 @@ const Timer = {
 
   finishMain() {
     if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]);
-    Toast.show('¡Tiempo finalizado!', '⏰');
+    Toast.show('¡Tiempo finalizado!', Icons.alarm);
     AudioEngine.timerDone();
   },
 
@@ -936,8 +956,8 @@ const Timer = {
           '<h4>' + escapeHtml(timer.name || 'Cronometro') + '</h4>' +
           '<div id="detailTimerDisplay_' + i + '" class="v4-display ' + self.timerClass(timer) + '">' + formatTime(timer.remainingSeconds != null ? timer.remainingSeconds : timer.durationSeconds) + '</div>' +
           '<div class="v4-timer-actions">' +
-          '<button onclick="App.timer.startDetail(' + i + ')">▶ Iniciar</button>' +
-          '<button onclick="App.timer.pauseDetail(' + i + ')">⏸ Pausar</button>' +
+          '<button onclick="App.timer.startDetail(' + i + ')"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Iniciar</button>' +
+          '<button onclick="App.timer.pauseDetail(' + i + ')"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar</button>' +
           '<button onclick="App.timer.resetDetail(' + i + ')">↺ Reiniciar</button>' +
           '</div></div>';
       }).join('');
@@ -964,7 +984,7 @@ const Timer = {
         if (remaining <= 0) {
           timer.running = false; timer.endAt = 0; changed = true;
           if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
-          Toast.show('Cronometro terminado: ' + (timer.name || 'Listo'), '⏰');
+          Toast.show('Cronometro terminado: ' + (timer.name || 'Listo'), Icons.alarm);
           AudioEngine.timerDone();
         }
       }
@@ -1107,7 +1127,7 @@ const CookMode = (() => {
         isSpeaking = false;
         if (DOM.cookTtsBtn) DOM.cookTtsBtn.classList.remove('speaking');
         if (err && err.error === 'not-allowed') {
-          Toast.show('Toca la pantalla primero para activar la voz', '👆');
+          Toast.show('Toca la pantalla primero para activar la voz', Icons.pointer);
         } else if (err && err.error === 'canceled') {
           // Normal si el usuario avanza rapido
         } else {
@@ -1123,7 +1143,7 @@ const CookMode = (() => {
 
   function speak(text) {
     if (!('speechSynthesis' in window)) {
-      Toast.show('Tu navegador no soporta lectura de voz', '🔇');
+      Toast.show('Tu navegador no soporta lectura de voz', Icons.mute);
       return;
     }
     utteranceQueue = [];
@@ -1178,7 +1198,7 @@ const CookMode = (() => {
     if (DOM.cookPrevBtn) DOM.cookPrevBtn.disabled = currentStep === 0;
     if (DOM.cookNextBtn) {
       DOM.cookNextBtn.innerHTML = currentStep >= steps.length - 1
-        ? 'Finalizar <span>✓</span>'
+        ? 'Finalizar <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>'
         : 'Siguiente <span>→</span>';
       DOM.cookNextBtn.classList.toggle('finish-btn', currentStep >= steps.length - 1);
     }
@@ -1191,7 +1211,7 @@ const CookMode = (() => {
       DOM.cookStepNum.textContent = '';
       DOM.cookStepText.innerHTML = `
         <div class="cook-finish">
-          <div class="cook-finish-icon">🍲</div>
+          <div class="cook-finish-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M20 12v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="m4 8 16-4"/><path d="m8.86 6.78-.45-1.81a2 2 0 0 1 1.45-2.43l1.94-.48a2 2 0 0 1 2.43 1.46l.45 1.8"/></svg></div>
           <h2>¡Listo!</h2>
           <p>Todos los pasos completados. Buen provecho.</p>
         </div>`;
@@ -1203,7 +1223,7 @@ const CookMode = (() => {
     let quickHtml = '';
     if (minutes && minutes > 0) {
       quickHtml = `<button class="cook-quick-timer-btn" onclick="App.cookMode.startQuickTimer(${minutes})" aria-label="Iniciar timer de ${minutes} minutos">
-        ⏱️ ${minutes} min
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M16 2v2"/><path d="M8 2v2"/></svg> ${minutes} min
       </button>`;
     }
 
@@ -1231,8 +1251,8 @@ const CookMode = (() => {
         <span class="ct-name">${escapeHtml(timer.name || 'Timer')}</span>
         <span id="cookTimerDisplay_${i}" class="ct-time ${cls}">${formatTime(timer.remainingSeconds != null ? timer.remainingSeconds : timer.durationSeconds)}</span>
         <div class="ct-actions">
-          <button onclick="App.cookMode.startRecipeTimer(${i})" aria-label="Iniciar">▶</button>
-          <button onclick="App.cookMode.pauseRecipeTimer(${i})" aria-label="Pausar">⏸</button>
+          <button onclick="App.cookMode.startRecipeTimer(${i})" aria-label="Iniciar"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+          <button onclick="App.cookMode.pauseRecipeTimer(${i})" aria-label="Pausar"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
           <button onclick="App.cookMode.resetRecipeTimer(${i})" aria-label="Reiniciar">↺</button>
         </div>
       </div>`;
@@ -1257,7 +1277,7 @@ const CookMode = (() => {
           changed = true;
           if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
           AudioEngine.timerDone();
-          Toast.show('Cronometro terminado: ' + (timer.name || 'Listo'), '⏰');
+          Toast.show('Cronometro terminado: ' + (timer.name || 'Listo'), Icons.alarm);
         }
       }
       const display = byId('cookTimerDisplay_' + i);
@@ -1288,7 +1308,7 @@ const CookMode = (() => {
         if (DOM.cookQuickDisplay) DOM.cookQuickDisplay.classList.remove('active');
         if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]);
         AudioEngine.timerDone();
-        Toast.show('¡Tiempo del paso terminado!', '⏰');
+        Toast.show('¡Tiempo del paso terminado!', Icons.alarm);
       }
     }, 1000);
   }
@@ -1551,7 +1571,7 @@ const DataIO = {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    Toast.show('Backup descargado', '💾');
+    Toast.show('Backup descargado', Icons.save);
   },
 
   import(input) {
@@ -1577,9 +1597,9 @@ const DataIO = {
           Storage.save();
           Render.categories();
           Nav.home();
-          Toast.show('Datos importados correctamente', '✅');
+          Toast.show('Datos importados correctamente', Icons.check);
         });
-      } catch (err) { Toast.show('Archivo invalido', '❌'); }
+      } catch (err) { Toast.show('Archivo invalido', Icons.error); }
     };
     reader.readAsText(file);
     input.value = '';
@@ -1592,7 +1612,7 @@ const DataIO = {
       Storage.save();
       Render.categories();
       Nav.home();
-      Toast.show('Todos los datos eliminados', '🗑️');
+      Toast.show('Todos los datos eliminados', Icons.trash);
     });
   }
 };
@@ -1609,7 +1629,7 @@ const Settings = {
   toggleSound() {
     const on = AudioEngine.toggle();
     this.updateSoundToggle();
-    Toast.show(on ? 'Sonidos activados' : 'Sonidos silenciados', on ? '🔊' : '🔇');
+    Toast.show(on ? 'Sonidos activados' : 'Sonidos silenciados', on ? Icons.sound : Icons.mute);
   }
 };
 
@@ -1686,7 +1706,7 @@ function init() {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            App.toast.show('Actualizacion disponible. Recarga la app.', '🔄');
+            App.toast.show('Actualizacion disponible. Recarga la app.', Icons.refresh);
           }
         });
       });
