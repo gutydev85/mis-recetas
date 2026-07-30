@@ -69,6 +69,17 @@ function parseLines(value) {
   return String(value ?? '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 }
 
+function getSteps(recipe) {
+  if (!recipe) return [];
+  const texts = parseLines(recipe.pasos);
+  const photos = Array.isArray(recipe.stepPhotos) ? recipe.stepPhotos : [];
+  return texts.map((text, i) => ({ text, photo: photos[i] || '' }));
+}
+
+function stepsToString(steps) {
+  return steps.map(s => s.text).join('\n');
+}
+
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -194,6 +205,7 @@ const State = {
   modalCallback: null,
   mainTimer: { seconds: 0, running: false, endAt: 0, interval: null },
   detailTimerInterval: null,
+  _editingStepIndex: null,
   get recipe() { return this.recipes.find(r => r.id === this.currentRecipeId) || null; },
   get category() { return this.categories.find(c => c.id === this.editingCategoryId) || null; }
 };
@@ -229,7 +241,11 @@ const Storage = {
     if (!recipe) return;
     if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
     if (!Array.isArray(recipe.timers)) recipe.timers = [];
+    if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
     if (typeof recipe.notaFinal !== 'string') recipe.notaFinal = '';
+    const stepCount = parseLines(recipe.pasos).length;
+    while (recipe.stepPhotos.length < stepCount) recipe.stepPhotos.push('');
+    if (recipe.stepPhotos.length > stepCount) recipe.stepPhotos.length = stepCount;
     recipe.timers = recipe.timers.map((t, i) => {
       const durSec = Number.isFinite(t.durationSeconds)
         ? t.durationSeconds
@@ -254,6 +270,9 @@ const Storage = {
     if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
     while (recipe.stepDone.length < steps.length) recipe.stepDone.push(false);
     if (recipe.stepDone.length > steps.length) recipe.stepDone.length = steps.length;
+    if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
+    while (recipe.stepPhotos.length < steps.length) recipe.stepPhotos.push('');
+    if (recipe.stepPhotos.length > steps.length) recipe.stepPhotos.length = steps.length;
   }
 };
 
@@ -270,7 +289,7 @@ function cacheDOM() {
     'detailFavBtn','mainTimerBox','timerDisplay','timerPlayBtn',
     'recipeFormTitle','recipeName','recipeCategory','recipeIngredients','recipeSteps',
     'recipeTime','recipeFinalNote','photoPreview','photoInput','photoBtnText',
-    'recipeTimersEditor','recipeDeleteBtn',
+    'recipeTimersEditor','recipeDeleteBtn','stepsEditor','stepPhotoInput',
     'catFormTitle','catNameInput','catDeleteBtn',
     'soundToggle','soundDesc',
     'cookTitle','cookBody','cookStepNum','cookStepText','cookDots','cookNavDots',
@@ -764,15 +783,16 @@ const Recipe = {
 
   renderSteps(recipe) {
     Storage.ensureStepState(recipe);
-    const steps = parseLines(recipe.pasos);
+    const steps = getSteps(recipe);
     if (!steps.length) {
       DOM.detailSteps.innerHTML = '<p class="empty-state" style="padding:20px 0">No hay pasos anadidos.</p>';
       return;
     }
     DOM.detailSteps.innerHTML = steps.map(function(step, i) {
+      const photoHtml = step.photo ? '<img src="' + step.photo + '" class="step-photo" alt="Paso ' + (i+1) + '">' : '';
       return '<div class="step-item ' + (recipe.stepDone[i] ? 'done' : '') + '" data-step="' + i + '">' +
         '<div class="step-check ' + (recipe.stepDone[i] ? 'checked' : '') + '">' + (recipe.stepDone[i] ? ICONS.check : '') + '</div>' +
-        '<div class="step-text">' + escapeHtml(step) + '</div>' +
+        '<div class="step-content">' + photoHtml + '<div class="step-text">' + escapeHtml(step.text) + '</div></div>' +
         '</div>';
     }).join('');
 
@@ -799,6 +819,7 @@ const Recipe = {
     State.editingRecipeId = id;
     State.currentPhotoBase64 = '';
     State.cameFromDetail = false;
+    State._editingStepIndex = null;
     DOM.recipeFormTitle.textContent = id ? 'Editar receta' : 'Nueva receta';
 
     const catSelect = DOM.recipeCategory;
@@ -815,11 +836,11 @@ const Recipe = {
         DOM.recipeName.value = recipe.nombre || '';
         DOM.recipeCategory.value = recipe.categoriaId || '';
         DOM.recipeIngredients.value = recipe.ingredientes || '';
-        DOM.recipeSteps.value = recipe.pasos || '';
         DOM.recipeTime.value = recipe.tiempoMinutos || '';
         DOM.recipeFinalNote.value = recipe.notaFinal || '';
         DOM.recipeDeleteBtn.style.display = 'block';
         App.timer.buildEditor(recipe.timers || []);
+        this.buildStepsEditor(getSteps(recipe));
         if (recipe.fotoPath) {
           DOM.photoPreview.src = recipe.fotoPath;
           DOM.photoPreview.classList.add('visible');
@@ -831,21 +852,128 @@ const Recipe = {
       DOM.recipeName.value = '';
       DOM.recipeCategory.value = State.listFilter.id || (State.categories[0] ? State.categories[0].id : '');
       DOM.recipeIngredients.value = '';
-      DOM.recipeSteps.value = '';
       DOM.recipeTime.value = '';
       DOM.recipeFinalNote.value = '';
       DOM.recipeDeleteBtn.style.display = 'none';
       App.timer.buildEditor([]);
+      this.buildStepsEditor([{text:'',photo:''}]);
     }
     Nav.set('recipe-form');
     setTimeout(function() { if (DOM.recipeName) DOM.recipeName.focus(); }, 100);
+  },
+
+  buildStepsEditor(steps) {
+    if (!DOM.stepsEditor) return;
+    steps = steps || [{text:'',photo:''}];
+    DOM.stepsEditor.innerHTML = steps.map(function(step, i) {
+      const photoPreview = step.photo ? '<img src="' + step.photo + '" class="step-editor-photo" alt="">' : '';
+      const photoBtnText = step.photo ? 'Cambiar foto' : 'Anadir foto';
+      return '<div class="step-editor-row" data-index="' + i + '">' +
+        '<div class="step-editor-num">' + (i+1) + '</div>' +
+        '<div class="step-editor-body">' +
+          '<textarea class="step-editor-text" placeholder="Describe este paso..." rows="2">' + escapeHtml(step.text) + '</textarea>' +
+          '<div class="step-editor-photo-wrap">' + photoPreview + '</div>' +
+          '<div class="step-editor-actions">' +
+            '<button type="button" class="step-editor-btn" onclick="App.recipe.pickStepPhoto(' + i + ')">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> ' + photoBtnText +
+            '</button>' +
+            (steps.length > 1 ? '<button type="button" class="step-editor-btn step-editor-remove" onclick="App.recipe.removeStep(' + i + ')">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar' +
+            '</button>' : '') +
+            (i > 0 ? '<button type="button" class="step-editor-btn" onclick="App.recipe.moveStep(' + i + ',' + (i-1) + ')">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 15l-6-6-6 6"/></svg> Subir' +
+            '</button>' : '') +
+            (i < steps.length-1 ? '<button type="button" class="step-editor-btn" onclick="App.recipe.moveStep(' + i + ',' + (i+1) + ')">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M6 9l6 6 6-6"/></svg> Bajar' +
+            '</button>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  },
+
+  readStepsEditor() {
+    if (!DOM.stepsEditor) return [{text:'',photo:''}];
+    const rows = $$('.step-editor-row', DOM.stepsEditor);
+    return rows.map(function(row) {
+      const textEl = row.querySelector('.step-editor-text');
+      const photoEl = row.querySelector('.step-editor-photo');
+      return {
+        text: textEl ? textEl.value.trim() : '',
+        photo: photoEl ? photoEl.src : ''
+      };
+    }).filter(function(s) { return s.text; });
+  },
+
+  addStep() {
+    const steps = this.readStepsEditor();
+    steps.push({text:'',photo:''});
+    this.buildStepsEditor(steps);
+    setTimeout(function() {
+      const texts = $$('.step-editor-text', DOM.stepsEditor);
+      if (texts.length) texts[texts.length-1].focus();
+    }, 50);
+  },
+
+  removeStep(index) {
+    const steps = this.readStepsEditor();
+    steps.splice(index, 1);
+    if (!steps.length) steps.push({text:'',photo:''});
+    this.buildStepsEditor(steps);
+  },
+
+  moveStep(from, to) {
+    const steps = this.readStepsEditor();
+    const item = steps.splice(from, 1)[0];
+    steps.splice(to, 0, item);
+    this.buildStepsEditor(steps);
+  },
+
+  pickStepPhoto(index) {
+    State._editingStepIndex = index;
+    if (DOM.stepPhotoInput) DOM.stepPhotoInput.click();
+  },
+
+  handleStepPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > CONFIG.MAX_PHOTO_MB * 1024 * 1024) {
+      Toast.show('La foto es muy grande. Max: 5MB', Icons.warning);
+      input.value = '';
+      return;
+    }
+    const index = State._editingStepIndex;
+    if (index == null) { input.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, CONFIG.PHOTO_MAX_WIDTH / img.width);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL('image/jpeg', CONFIG.PHOTO_QUALITY);
+        const steps = App.recipe.readStepsEditor();
+        if (steps[index]) steps[index].photo = base64;
+        App.recipe.buildStepsEditor(steps);
+      };
+      img.onerror = function() { Toast.show('Error al cargar la imagen', Icons.error); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+    State._editingStepIndex = null;
   },
 
   save() {
     const nombre = DOM.recipeName.value.trim();
     const categoriaId = DOM.recipeCategory.value;
     const ingredientes = DOM.recipeIngredients.value.trim();
-    const pasos = DOM.recipeSteps.value.trim();
+    const stepData = this.readStepsEditor();
+    const pasos = stepsToString(stepData);
+    const stepPhotos = stepData.map(function(s) { return s.photo; });
     const tiempoVal = DOM.recipeTime.value.trim();
     const tiempo = tiempoVal ? parseInt(tiempoVal, 10) : 0;
     const notaFinal = DOM.recipeFinalNote.value.trim();
@@ -861,6 +989,7 @@ const Recipe = {
         recipe.categoriaId = categoriaId;
         recipe.ingredientes = ingredientes;
         recipe.pasos = pasos;
+        recipe.stepPhotos = stepPhotos;
         recipe.tiempoMinutos = tiempo;
         recipe.fotoPath = State.currentPhotoBase64 || recipe.fotoPath || '';
         recipe.notaFinal = notaFinal;
@@ -872,6 +1001,7 @@ const Recipe = {
       const newRecipe = {
         id: generateId('r'),
         categoriaId: categoriaId, nombre: nombre, ingredientes: ingredientes, pasos: pasos,
+        stepPhotos: stepPhotos,
         tiempoMinutos: tiempo,
         favorito: false,
         fotoPath: State.currentPhotoBase64,

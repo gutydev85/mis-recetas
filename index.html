@@ -262,10 +262,17 @@
         <label for="recipeIngredients">Ingredientes <span class="label-hint">(uno por linea)</span></label>
         <textarea id="recipeIngredients" placeholder="500g de carne&#10;2 cebollas&#10;Sal al gusto"></textarea>
       </div>
+      <!-- ===== PASOS CON FOTOS ===== -->
       <div class="form-group">
-        <label for="recipeSteps">Pasos <span class="label-hint">(uno por linea)</span></label>
-        <textarea id="recipeSteps" placeholder="1. Picar la cebolla&#10;2. Sellar la carne 5 min&#10;3. Mezclar todo"></textarea>
+        <label>Pasos <span class="label-hint">(uno por paso, con foto opcional)</span></label>
+        <div id="stepsEditor" class="steps-editor"></div>
+        <button type="button" class="btn-ghost" onclick="App.recipe.addStep()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          Anadir paso
+        </button>
+        <input type="file" id="stepPhotoInput" accept="image/*" style="display:none" onchange="App.recipe.handleStepPhoto(this)">
       </div>
+      <!-- ===== /PASOS CON FOTOS ===== -->
       <div class="form-group">
         <label for="recipeTime">Tiempo de coccion <span class="label-hint">(minutos)</span></label>
         <input type="number" id="recipeTime" placeholder="30" min="0">

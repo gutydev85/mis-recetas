@@ -2978,3 +2978,170 @@ html, body {
     font-size: 34px;
   }
 }
+
+
+/* ============================================================
+   PASOS CON FOTOS — NUEVO v5.5
+   ============================================================ */
+
+/* ---- Editor de pasos ---- */
+.steps-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.step-editor-row {
+  display: flex;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  transition: all 0.25s var(--ease-out);
+  animation: cardIn 0.4s var(--ease-out) both;
+}
+
+.step-editor-row:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-raised);
+}
+
+.step-editor-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.step-editor-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step-editor-text {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--text);
+  font-family: var(--font-body);
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.6;
+  transition: all 0.25s var(--ease-out);
+}
+
+.step-editor-text:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  background: var(--surface);
+}
+
+.step-editor-photo-wrap {
+  display: flex;
+}
+
+.step-editor-photo {
+  max-height: 160px;
+  max-width: 100%;
+  border-radius: var(--radius-xs);
+  object-fit: cover;
+  border: 1px solid var(--border);
+  animation: photoIn 0.4s var(--ease-out);
+}
+
+.step-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.step-editor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  font-family: var(--font-body);
+}
+
+.step-editor-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+  transform: translateY(-1px);
+}
+
+.step-editor-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.step-editor-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.step-editor-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+/* ---- Fotos en detalle de receta ---- */
+.step-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  animation: photoIn 0.5s var(--ease-out);
+}
+
+/* ---- Foto en modo cocinar ---- */
+.cook-step-photo {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+  animation: photoIn 0.5s var(--ease-out);
+  box-shadow: var(--shadow);
+}
+
+@media (min-width: 900px) {
+  .cook-step-photo {
+    max-height: 340px;
+  }
+}
