@@ -218,7 +218,16 @@
 
       <div class="detail-section">
         <h3><span class="section-dot"></span> Ingredientes</h3>
-        <ul id="detailIngredients" class="ingredient-list"></ul>
+        <div id="portionControl" class="portion-control" style="display:none;">
+  <span class="portion-label">Porciones</span>
+  <div class="portion-buttons">
+    <button type="button" class="portion-btn" onclick="App.recipe.adjustPortions(-1)" aria-label="Disminuir">−</button>
+    <span id="portionDisplay" class="portion-display">4</span>
+    <button type="button" class="portion-btn" onclick="App.recipe.adjustPortions(1)" aria-label="Aumentar">+</button>
+  </div>
+  <button type="button" class="portion-reset" onclick="App.recipe.resetPortions()">Restaurar</button>
+</div>
+<ul id="detailIngredients" class="ingredient-list"></ul>
       </div>
 
       <div class="detail-section">
@@ -277,6 +286,15 @@
         <label for="recipeTime">Tiempo de coccion <span class="label-hint">(minutos)</span></label>
         <input type="number" id="recipeTime" placeholder="30" min="0">
       </div>
+      <div class="form-group">
+        <label for="recipePorciones">Porciones base <span class="label-hint">(para calcular cantidades)</span></label>
+        <input type="number" id="recipePorciones" placeholder="4" min="1" value="4">
+      </div>
+      <div class="form-checkbox">
+        <input type="checkbox" id="recipeAjustePorciones" checked>
+        <label for="recipeAjustePorciones">Permitir ajustar porciones al ver la receta</label>
+      </div>
+
       <div class="form-group">
         <label for="recipeFinalNote">Nota final <span class="label-hint">(consejos opcionales)</span></label>
         <textarea id="recipeFinalNote" placeholder="Sirve caliente con limon..."></textarea>

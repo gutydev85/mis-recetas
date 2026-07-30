@@ -55,6 +55,58 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const byId = id => document.getElementById(id);
 
+
+/* ---------- UTILIDADES: ESCALADO DE INGREDIENTES ---------- */
+function parseQuantity(str) {
+  str = str.trim().replace(/,/g, '.');
+  var m = str.match(/^(\d+)\/(\d+)$/);
+  if (m) return parseInt(m[1]) / parseInt(m[2]);
+  m = str.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (m) return parseInt(m[1]) + parseInt(m[2]) / parseInt(m[3]);
+  var n = parseFloat(str);
+  return isNaN(n) ? null : n;
+}
+
+function formatQty(n) {
+  if (n === null || n === undefined) return '';
+  if (Number.isInteger(n)) return String(n);
+  var tol = 0.015;
+  var fracs = [[1,2],[1,3],[2,3],[1,4],[3,4],[1,5],[2,5],[3,5],[4,5],[1,6],[5,6],[1,8],[3,8],[5,8],[7,8]];
+  for (var i = 0; i < fracs.length; i++) {
+    if (Math.abs(n - fracs[i][0]/fracs[i][1]) < tol) return fracs[i][0] + '/' + fracs[i][1];
+  }
+  var rounded = Math.round(n * 100) / 100;
+  return String(rounded).replace('.', ',');
+}
+
+function scaleIngredientsText(text, factor) {
+  if (!text || !factor || factor === 1) return text;
+  var skipRegex = /al gusto|opcional|un poco|qs|cantidad necesaria|suficiente|para decorar/i;
+
+  return parseLines(text).map(function(line) {
+    if (!line.trim() || !/\d/.test(line) || skipRegex.test(line)) return line;
+
+    var result = line;
+
+    result = result.replace(/(\d+)\s+(\d+)\/(\d+)(?=\s|$)/g, function(match, w, n, d) {
+      return formatQty((parseInt(w) + parseInt(n)/parseInt(d)) * factor);
+    });
+
+    if (/\d+\/\d+/.test(result)) {
+      result = result.replace(/(^|\s)(\d+)\/(\d+)(?=\s|$)/g, function(match, sp, n, d) {
+        return sp + formatQty((parseInt(n)/parseInt(d)) * factor);
+      });
+    }
+
+    var numPattern = /(^|\s)(\d+(?:[.,]\d+)?)(?=\s*(?:g|kg|ml|l|oz|lb|tazas?|cucharadas?|cucharaditas?|cda\.?|cdta\.?|piezas?|unidades?|puñados?|ramas?|dientes?|pizcas?|latas?|sobres?|botellas?|paquetes?|rebanadas?|trozos?|porciones?|litros?|gramos?|kilos?|libras?|onzas?|hojas?|potes?|frascos?|vasos?|copas?|platos?|fuentes?|bandejas?|moldes?|raciones?|personas?|comensales?)?\b)/gi;
+    result = result.replace(numPattern, function(match, sp, num) {
+      return sp + formatQty(parseFloat(num.replace(',', '.')) * factor);
+    });
+
+    return result;
+  }).join('\n');
+}
+
 function escapeHtml(str) {
   if (str == null) return '';
   const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
@@ -191,6 +243,7 @@ const AudioEngine = (() => {
 })();
 
 const State = {
+    portionsMap: {},
   categories: [],
   recipes: [],
   currentView: 'home',
@@ -242,6 +295,8 @@ const Storage = {
     if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
     if (!Array.isArray(recipe.timers)) recipe.timers = [];
     if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
+    if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
+    if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
     if (typeof recipe.notaFinal !== 'string') recipe.notaFinal = '';
     const stepCount = parseLines(recipe.pasos).length;
     while (recipe.stepPhotos.length < stepCount) recipe.stepPhotos.push('');
@@ -271,6 +326,8 @@ const Storage = {
     while (recipe.stepDone.length < steps.length) recipe.stepDone.push(false);
     if (recipe.stepDone.length > steps.length) recipe.stepDone.length = steps.length;
     if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
+    if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
+    if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
     while (recipe.stepPhotos.length < steps.length) recipe.stepPhotos.push('');
     if (recipe.stepPhotos.length > steps.length) recipe.stepPhotos.length = steps.length;
   }
@@ -288,6 +345,7 @@ function cacheDOM() {
     'detailIngredients','detailSteps','detailTimersWrap','detailNoteWrap','detailFinalNote',
     'detailFavBtn','mainTimerBox','timerDisplay','timerPlayBtn',
     'recipeFormTitle','recipeName','recipeCategory','recipeIngredients','recipeSteps',
+    'recipePorciones','recipeAjustePorciones','portionControl','portionDisplay',
     'recipeTime','recipeFinalNote','photoPreview','photoInput','photoBtnText',
     'recipeTimersEditor','recipeDeleteBtn','stepsEditor','stepPhotoInput',
     'catFormTitle','catNameInput','catDeleteBtn',
@@ -753,7 +811,22 @@ const Recipe = {
 
     DOM.detailTitle.textContent = recipe.nombre;
     DOM.detailRecipeName.textContent = recipe.nombre;DOM.detailPhotoWrap.innerHTML = recipe.fotoPath? '<img src="' + recipe.fotoPath + '" class="detail-photo" alt="">' : '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
-    DOM.detailIngredients.innerHTML = parseLines(recipe.ingredientes).map(function(line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('');
+    var portionControl = byId('portionControl');
+    var portionDisplay = byId('portionDisplay');
+    if (portionControl && portionDisplay) {
+      if (recipe.ajustePorciones) {
+        portionControl.style.display = 'flex';
+        var current = State.portionsMap[recipe.id] || recipe.porciones;
+        portionDisplay.textContent = current;
+        var factor = current / recipe.porciones;
+        DOM.detailIngredients.innerHTML = parseLines(scaleIngredientsText(recipe.ingredientes, factor))
+          .map(function(l) { return l.trim() ? '<li>' + escapeHtml(l) + '</li>' : ''; }).join('');
+      } else {
+        portionControl.style.display = 'none';
+        DOM.detailIngredients.innerHTML = parseLines(recipe.ingredientes)
+          .map(function(line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('');
+      }
+    }
     this.renderSteps(recipe);
     App.timer.renderDetailTimers(recipe);
     DOM.detailTime.textContent = (recipe.tiempoMinutos || 0) + ' min';
@@ -838,6 +911,8 @@ const Recipe = {
         DOM.recipeIngredients.value = recipe.ingredientes || '';
         DOM.recipeTime.value = recipe.tiempoMinutos || '';
         DOM.recipeFinalNote.value = recipe.notaFinal || '';
+        DOM.recipePorciones.value = recipe.porciones || 4;
+        DOM.recipeAjustePorciones.checked = recipe.ajustePorciones !== false;
         DOM.recipeDeleteBtn.style.display = 'block';
         App.timer.buildEditor(recipe.timers || []);
         this.buildStepsEditor(getSteps(recipe));
@@ -854,6 +929,8 @@ const Recipe = {
       DOM.recipeIngredients.value = '';
       DOM.recipeTime.value = '';
       DOM.recipeFinalNote.value = '';
+      DOM.recipePorciones.value = 4;
+      DOM.recipeAjustePorciones.checked = true;
       DOM.recipeDeleteBtn.style.display = 'none';
       App.timer.buildEditor([]);
       this.buildStepsEditor([{text:'',photo:''}]);
@@ -969,6 +1046,8 @@ const Recipe = {
 
   save() {
     const nombre = DOM.recipeName.value.trim();
+    var porciones = parseInt(DOM.recipePorciones.value, 10) || 4;
+    var ajustePorciones = DOM.recipeAjustePorciones.checked;
     const categoriaId = DOM.recipeCategory.value;
     const ingredientes = DOM.recipeIngredients.value.trim();
     const stepData = this.readStepsEditor();
@@ -994,6 +1073,8 @@ const Recipe = {
         recipe.fotoPath = State.currentPhotoBase64 || recipe.fotoPath || '';
         recipe.notaFinal = notaFinal;
         recipe.timers = timers;
+        recipe.porciones = Math.max(1, porciones);
+        recipe.ajustePorciones = ajustePorciones;
         Storage.normalizeRecipe(recipe);
         Storage.ensureStepState(recipe);
       }
@@ -1006,6 +1087,8 @@ const Recipe = {
         favorito: false,
         fotoPath: State.currentPhotoBase64,
         notaFinal: notaFinal,
+        porciones: Math.max(1, porciones),
+        ajustePorciones: ajustePorciones,
         timers: timers,
         stepDone: []
       };
@@ -1030,6 +1113,24 @@ const Recipe = {
       Toast.show('Receta eliminada', Icons.trash);
       AudioEngine.delete();
     });
+  },
+
+  adjustPortions: function(delta) {
+    var recipe = State.recipe;
+    if (!recipe || !recipe.ajustePorciones) return;
+    var current = State.portionsMap[recipe.id] || recipe.porciones;
+    var next = Math.max(1, current + delta);
+    State.portionsMap[recipe.id] = next;
+    this.renderDetail(recipe);
+    Toast.show('Porciones: ' + next, Icons.check);
+  },
+
+  resetPortions: function() {
+    var recipe = State.recipe;
+    if (!recipe) return;
+    State.portionsMap[recipe.id] = recipe.porciones;
+    this.renderDetail(recipe);
+    Toast.show('Cantidades originales', Icons.refresh);
   },
 
   editCurrent() {
@@ -1679,11 +1780,14 @@ const CookMode = (() => {
 
   /* ---------- Ingredientes overlay ---------- */
   function showIngredients() {
-    const recipe = State.recipe;
+    var recipe = State.recipe;
     if (!recipe) return;
-    const lines = parseLines(recipe.ingredientes);
+    var factor = (recipe.ajustePorciones && State.portionsMap[recipe.id])
+      ? State.portionsMap[recipe.id] / recipe.porciones
+      : 1;
+    var lines = parseLines(scaleIngredientsText(recipe.ingredientes, factor));
     DOM.cookIngredientsList.innerHTML = lines.length
-      ? lines.map(l => `<li>${escapeHtml(l)}</li>`).join('')
+      ? lines.map(function(l) { return l.trim() ? '<li>' + escapeHtml(l) + '</li>' : ''; }).join('')
       : '<li class="empty">Sin ingredientes</li>';
     DOM.cookIngredientsOverlay.classList.add('active');
   }

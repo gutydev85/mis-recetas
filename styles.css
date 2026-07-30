@@ -3145,3 +3145,126 @@ html, body {
     max-height: 340px;
   }
 }
+
+/* ===== AJUSTE DE PORCIONES ===== */
+.portion-control {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 16px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  flex-wrap: wrap;
+  animation: fadeIn 0.3s ease;
+}
+
+.portion-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.portion-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.portion-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+
+.portion-btn:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+  transform: translateY(-1px);
+}
+
+.portion-btn:active {
+  transform: translateY(0);
+}
+
+.portion-display {
+  min-width: 28px;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.portion-reset {
+  margin-left: auto;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.portion-reset:hover {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.06);
+}
+
+/* ===== FORMULARIO: CHECKBOX Y PORCIONES ===== */
+.form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.form-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #e8a87c;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.form-checkbox label {
+  margin: 0 !important;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.4;
+}
+
+#recipePorciones {
+  width: 100px;
+  text-align: center;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
