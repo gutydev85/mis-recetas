@@ -811,22 +811,7 @@ const Recipe = {
 
     DOM.detailTitle.textContent = recipe.nombre;
     DOM.detailRecipeName.textContent = recipe.nombre;DOM.detailPhotoWrap.innerHTML = recipe.fotoPath? '<img src="' + recipe.fotoPath + '" class="detail-photo" alt="">' : '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
-    var portionControl = byId('portionControl');
-    var portionDisplay = byId('portionDisplay');
-    if (portionControl && portionDisplay) {
-      if (recipe.ajustePorciones) {
-        portionControl.style.display = 'flex';
-        var current = State.portionsMap[recipe.id] || recipe.porciones;
-        portionDisplay.textContent = current;
-        var factor = current / recipe.porciones;
-        DOM.detailIngredients.innerHTML = parseLines(scaleIngredientsText(recipe.ingredientes, factor))
-          .map(function(l) { return l.trim() ? '<li>' + escapeHtml(l) + '</li>' : ''; }).join('');
-      } else {
-        portionControl.style.display = 'none';
-        DOM.detailIngredients.innerHTML = parseLines(recipe.ingredientes)
-          .map(function(line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('');
-      }
-    }
+    this._renderPortionUI(recipe);
     this.renderSteps(recipe);
     App.timer.renderDetailTimers(recipe);
     DOM.detailTime.textContent = (recipe.tiempoMinutos || 0) + ' min';
@@ -1115,13 +1100,29 @@ const Recipe = {
     });
   },
 
+  _renderPortionUI: function(recipe) {
+    if (!recipe || !DOM.portionControl || !DOM.portionDisplay || !DOM.detailIngredients) return;
+    if (recipe.ajustePorciones) {
+      DOM.portionControl.style.display = 'flex';
+      var current = State.portionsMap[recipe.id] || recipe.porciones;
+      DOM.portionDisplay.textContent = current;
+      var factor = recipe.porciones > 0 ? current / recipe.porciones : 1;
+      DOM.detailIngredients.innerHTML = parseLines(scaleIngredientsText(recipe.ingredientes, factor))
+        .map(function(l) { return l.trim() ? '<li>' + escapeHtml(l) + '</li>' : ''; }).join('');
+    } else {
+      DOM.portionControl.style.display = 'none';
+      DOM.detailIngredients.innerHTML = parseLines(recipe.ingredientes)
+        .map(function(line) { return '<li>' + escapeHtml(line) + '</li>'; }).join('');
+    }
+  },
+
   adjustPortions: function(delta) {
     var recipe = State.recipe;
     if (!recipe || !recipe.ajustePorciones) return;
     var current = State.portionsMap[recipe.id] || recipe.porciones;
     var next = Math.max(1, current + delta);
     State.portionsMap[recipe.id] = next;
-    this.renderDetail(recipe);
+    this._renderPortionUI(recipe);
     Toast.show('Porciones: ' + next, Icons.check);
   },
 
@@ -1129,7 +1130,7 @@ const Recipe = {
     var recipe = State.recipe;
     if (!recipe) return;
     State.portionsMap[recipe.id] = recipe.porciones;
-    this.renderDetail(recipe);
+    this._renderPortionUI(recipe);
     Toast.show('Cantidades originales', Icons.refresh);
   },
 
