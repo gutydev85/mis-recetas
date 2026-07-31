@@ -1118,7 +1118,10 @@ const Recipe = {
     State.listFilter = { type: type, id: id, query: null };
     const cat = State.categories.find(c => c.id === id);
     const list = type === 'category'
-      ? State.recipes.filter(r => r.categoriaId === id)
+      ? State.recipes.filter(r => {
+          if (id === null || id === undefined) return !r.categoriaId || r.categoriaId === '' || r.categoriaId === null || r.categoriaId === undefined;
+          return r.categoriaId === id;
+        })
       : State.recipes.slice();
 
     if (isDesktop()) {
