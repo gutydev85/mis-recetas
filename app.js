@@ -325,42 +325,79 @@ const FileStorage = (() => {
       const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.useFileStorage);
       if (saved !== 'true') return;
       const handle = await getHandle();
-      if (handle) {
-        const perm = await handle.queryPermission({ mode: 'readwrite' });
-        if (perm === 'granted' || (perm === 'prompt' && await handle.requestPermission({ mode: 'readwrite' }) === 'granted')) {
+      if (!handle) {
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+        return;
+      }
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        dirHandle = handle;
+      } else if (perm === 'prompt') {
+        const newPerm = await handle.requestPermission({ mode: 'readwrite' });
+        if (newPerm === 'granted') {
           dirHandle = handle;
-          active = true;
         } else {
           localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
           await removeHandle();
+          return;
         }
       } else {
         localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+        await removeHandle();
+        return;
       }
+      // Verify files exist before going active
+      const cats = await readFile('categories.json');
+      const recs = await readFile('recipes.json');
+      if (cats === null && recs === null) {
+        // No files in folder but flag says active — reset
+        dirHandle = null;
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+        await removeHandle();
+        return;
+      }
+      active = true;
+      await load();
     } catch (e) {
       console.error('FileStorage init error', e);
+      active = false;
+      dirHandle = null;
       localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
     }
   }
 
   async function activate() {
     if (!isSupported()) {
-      Toast.show('Tu navegador no soporta esta funcion', Icons.warning);
+      Toast.show('Requiere HTTPS o localhost para funcionar', Icons.warning);
       return false;
     }
     try {
       const handle = await window.showDirectoryPicker();
+      // Test write first
       dirHandle = handle;
+      await writeFile('.mr_test', { ok: true });
+      await dirHandle.removeEntry('.mr_test');
+      // Migrate data
+      await migrateToFolder();
+      // Verify migration
+      const cats = await readFile('categories.json');
+      const recs = await readFile('recipes.json');
+      if (!cats && !recs && (State.categories.length > 0 || State.recipes.length > 0)) {
+        dirHandle = null;
+        Toast.show('Error al escribir en la carpeta', Icons.error);
+        return false;
+      }
+      // All good — commit
       await saveHandle(handle);
       localStorage.setItem(CONFIG.STORAGE_KEYS.useFileStorage, 'true');
       active = true;
-      await migrateToFolder();
       localStorage.removeItem(CONFIG.STORAGE_KEYS.categories);
       localStorage.removeItem(CONFIG.STORAGE_KEYS.recipes);
       localStorage.removeItem(CONFIG.STORAGE_KEYS.attempts);
       localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
       return true;
     } catch (e) {
+      dirHandle = null;
       if (e.name !== 'AbortError') {
         console.error('activate error', e);
         Toast.show('Error al acceder a la carpeta', Icons.error);
@@ -373,6 +410,15 @@ const FileStorage = (() => {
     if (!active || !dirHandle) return false;
     try {
       await migrateToLocal();
+      // Verify localStorage has data
+      const cats = localStorage.getItem(CONFIG.STORAGE_KEYS.categories);
+      const recs = localStorage.getItem(CONFIG.STORAGE_KEYS.recipes);
+      if (!cats && !recs) {
+        // Fallback: write current memory state
+        localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
+        localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
+        localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(Attempts._data));
+      }
       await clearFolder();
       await removeHandle();
       localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
@@ -387,16 +433,11 @@ const FileStorage = (() => {
   }
 
   async function writeFile(name, data) {
-    if (!dirHandle) return;
-    try {
-      const fileHandle = await dirHandle.getFileHandle(name, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(JSON.stringify(data, null, 2));
-      await writable.close();
-    } catch (e) {
-      console.error('writeFile error', e);
-      throw e;
-    }
+    if (!dirHandle) throw new Error('No dirHandle');
+    const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(data, null, 2));
+    await writable.close();
   }
 
   async function readFile(name) {
@@ -407,22 +448,20 @@ const FileStorage = (() => {
       const text = await file.text();
       return JSON.parse(text);
     } catch (e) {
-      if (e.name === 'NotFoundError') return null;
+      if (e.name === 'NotFoundError' || e.name === 'TypeError') return null;
       console.error('readFile error', e);
       return null;
     }
   }
 
   async function migrateToFolder() {
-    const cats = State.categories;
-    const recs = State.recipes;
-    const atts = Attempts._data;
-    const sound = localStorage.getItem(CONFIG.STORAGE_KEYS.sound);
-    const timer = localStorage.getItem(CONFIG.STORAGE_KEYS.timer);
-    await writeFile('categories.json', cats);
-    await writeFile('recipes.json', recs);
-    await writeFile('attempts.json', atts);
-    await writeFile('settings.json', { sound: sound, timer: timer });
+    await writeFile('categories.json', State.categories);
+    await writeFile('recipes.json', State.recipes);
+    await writeFile('attempts.json', Attempts._data);
+    await writeFile('settings.json', {
+      sound: AudioEngine.enabled,
+      timer: localStorage.getItem(CONFIG.STORAGE_KEYS.timer)
+    });
   }
 
   async function migrateToLocal() {
@@ -433,6 +472,9 @@ const FileStorage = (() => {
     State.categories = cats;
     State.recipes = recs;
     Attempts._data = atts;
+    localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(cats));
+    localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(recs));
+    localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(atts));
     if (settings.sound !== undefined) {
       localStorage.setItem(CONFIG.STORAGE_KEYS.sound, settings.sound);
       AudioEngine.enabled = settings.sound !== 'false';
@@ -451,29 +493,41 @@ const FileStorage = (() => {
   }
 
   async function save() {
-    if (!active) return;
-    await writeFile('categories.json', State.categories);
-    await writeFile('recipes.json', State.recipes);
-    await writeFile('attempts.json', Attempts._data);
-    await writeFile('settings.json', { sound: AudioEngine.enabled, timer: localStorage.getItem(CONFIG.STORAGE_KEYS.timer) });
+    if (!active || !dirHandle) return;
+    try {
+      await writeFile('categories.json', State.categories);
+      await writeFile('recipes.json', State.recipes);
+      await writeFile('attempts.json', Attempts._data);
+      await writeFile('settings.json', {
+        sound: AudioEngine.enabled,
+        timer: localStorage.getItem(CONFIG.STORAGE_KEYS.timer)
+      });
+    } catch (e) {
+      console.error('FileStorage.save error', e);
+      Toast.show('Error guardando en carpeta', Icons.warning);
+    }
   }
 
   async function load() {
-    if (!active) return;
-    const cats = await readFile('categories.json');
-    const recs = await readFile('recipes.json');
-    const atts = await readFile('attempts.json');
-    const settings = await readFile('settings.json');
-    if (cats) State.categories = cats;
-    if (recs) State.recipes = recs;
-    if (atts) Attempts._data = atts;
-    if (settings) {
-      if (settings.sound !== undefined) {
-        AudioEngine.enabled = settings.sound !== 'false';
+    if (!active || !dirHandle) return;
+    try {
+      const cats = await readFile('categories.json');
+      const recs = await readFile('recipes.json');
+      const atts = await readFile('attempts.json');
+      const settings = await readFile('settings.json');
+      if (cats) State.categories = cats;
+      if (recs) State.recipes = recs;
+      if (atts) Attempts._data = atts;
+      if (settings) {
+        if (settings.sound !== undefined) {
+          AudioEngine.enabled = settings.sound !== 'false';
+        }
+        if (settings.timer) {
+          localStorage.setItem(CONFIG.STORAGE_KEYS.timer, settings.timer);
+        }
       }
-      if (settings.timer) {
-        localStorage.setItem(CONFIG.STORAGE_KEYS.timer, settings.timer);
-      }
+    } catch (e) {
+      console.error('FileStorage.load error', e);
     }
   }
 
