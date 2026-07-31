@@ -1,9 +1,11 @@
 const CACHE_NAME = 'mi-recetario-v5';
-const FILES_TO_CACHE = [
+const APP_FILES = [
   './',
   './index.html',
   './styles.css',
-  './app.js',
+  './js/core.js',
+  './js/features.js',
+  './js/main.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -14,7 +16,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return Promise.all(
-        FILES_TO_CACHE.map(url =>
+        APP_FILES.map(url =>
           cache.add(url).catch(err => {
             console.warn('SW: failed to cache', url, err);
           })
@@ -36,12 +38,14 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
-  const isAppFile = FILES_TO_CACHE.some(f => {
+
+  // Detectar archivos de la app (HTML, JS, CSS, manifest)
+  const isAppFile = APP_FILES.some(f => {
     const path = f.replace('./', '/');
     return url.pathname === path || (f === './' && url.pathname === '/');
   });
 
-  // Para archivos de la app (HTML, JS, CSS): network-first
+  // Para archivos de la app: network-first (siempre intentar red primero)
   if (isAppFile) {
     e.respondWith(
       fetch(e.request).then(networkResponse => {
@@ -59,7 +63,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Para imágenes: cache-first
+  // Para imágenes y otros recursos: cache-first
   e.respondWith(
     caches.match(e.request).then(response => {
       if (response) return response;
