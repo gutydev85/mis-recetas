@@ -2463,7 +2463,7 @@ const Attempts = {
       var cls = filled ? 'active' : '';
       var star = filled ? '&#9733;' : '&#9734;';
       if (interactive) {
-        html += '<span class="' + cls + '" data-value="' + i + '" onclick="App.attempts.setRating(' + i + ')">' + star + '</span>';
+        html += '<span class="' + cls + '" data-value="' + i + '">' + star + '</span>';
       } else {
         html += '<span class="' + cls + '">' + star + '</span>';
       }
@@ -2556,11 +2556,16 @@ const Attempts = {
     if (!DOM.attemptRatingStars) return;
     DOM.attemptRatingStars.setAttribute('data-rating', n);
     var spans = DOM.attemptRatingStars.querySelectorAll('span');
-    spans.forEach(function(s, i) {
+    for (var i = 0; i < spans.length; i++) {
       var val = i + 1;
-      s.classList.toggle('active', val <= n);
-      s.innerHTML = val <= n ? '&#9733;' : '&#9734;';
-    });
+      if (val <= n) {
+        spans[i].classList.add('active');
+        spans[i].innerHTML = '&#9733;';
+      } else {
+        spans[i].classList.remove('active');
+        spans[i].innerHTML = '&#9734;';
+      }
+    }
   },
 
   handlePhoto(input) {
@@ -2981,6 +2986,20 @@ window.App = {
   modal: Modal,
   audio: { toggle: function() { Settings.toggleSound(); } },
   install: function() { PWA.install(); }
-};
+}
+
+  // Inicializar estrellas interactivas del formulario de intentos
+  if (DOM.attemptRatingStars) {
+    var starSpans = DOM.attemptRatingStars.querySelectorAll('span');
+    for (var i = 0; i < starSpans.length; i++) {
+      (function(idx) {
+        starSpans[idx].addEventListener('click', function() {
+          var val = parseInt(this.getAttribute('data-value'), 10);
+          App.attempts.setRating(val);
+        });
+      })(i);
+    }
+  }
+}
 
 document.addEventListener('DOMContentLoaded', init);
