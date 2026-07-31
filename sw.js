@@ -3,9 +3,9 @@ const APP_FILES = [
   './',
   './index.html',
   './styles.css',
-  './js/core.js',
-  './js/features.js',
-  './js/main.js',
+  './core.js',
+  './features.js',
+  './main.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -36,16 +36,11 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-
   const url = new URL(e.request.url);
-
-  // Detectar archivos de la app (HTML, JS, CSS, manifest)
   const isAppFile = APP_FILES.some(f => {
     const path = f.replace('./', '/');
     return url.pathname === path || (f === './' && url.pathname === '/');
   });
-
-  // Para archivos de la app: network-first (siempre intentar red primero)
   if (isAppFile) {
     e.respondWith(
       fetch(e.request).then(networkResponse => {
@@ -62,8 +57,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-
-  // Para imágenes y otros recursos: cache-first
   e.respondWith(
     caches.match(e.request).then(response => {
       if (response) return response;
