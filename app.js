@@ -273,7 +273,7 @@ const FileStorage = (() => {
   const KEY = 'dirHandle';
 
   function isSupported() {
-    return 'showDirectoryPicker' in window;
+    return 'showDirectoryPicker' in window && window.isSecureContext;
   }
 
   function openDB() {
@@ -2549,13 +2549,13 @@ const Settings = {
       if (FileStorage.active) {
         DOM.fileStorageDesc.textContent = 'Carpeta: ' + (FileStorage.dirName || 'Dispositivo');
       } else {
-        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : 'Tu navegador no soporta esta funcion';
+        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : 'Requiere HTTPS o localhost';
       }
     }
   },
   async toggleFileStorage() {
     if (!FileStorage.isSupported()) {
-      Toast.show('Tu navegador no soporta esta funcion', Icons.warning);
+      Toast.show('Requiere HTTPS o localhost para funcionar', Icons.warning);
       return;
     }
     if (FileStorage.active) {
