@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mi-recetario-v6-' + '20250731';
+const CACHE_NAME = 'mi-recetario-v5';
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -36,10 +36,13 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
-  const isAppFile = FILES_TO_CACHE.some(f => url.pathname.endsWith(f.replace('./', '/')) || url.pathname === '/');
-  const isImage = e.request.destination === 'image';
+  const isAppFile = FILES_TO_CACHE.some(f => {
+    const path = f.replace('./', '/');
+    return url.pathname === path || (f === './' && url.pathname === '/');
+  });
 
-  if (isAppFile && !isImage) {
+  // Para archivos de la app (HTML, JS, CSS): network-first
+  if (isAppFile) {
     e.respondWith(
       fetch(e.request).then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {
@@ -48,12 +51,15 @@ self.addEventListener('fetch', e => {
         }
         return networkResponse;
       }).catch(() => {
-        return caches.match(e.request).then(cached => cached || new Response('Offline', { status: 503 }));
+        return caches.match(e.request).then(cached => {
+          return cached || new Response('Offline', { status: 503 });
+        });
       })
     );
     return;
   }
 
+  // Para imágenes: cache-first
   e.respondWith(
     caches.match(e.request).then(response => {
       if (response) return response;
@@ -64,20 +70,19 @@ self.addEventListener('fetch', e => {
         }
         return networkResponse;
       }).catch(() => {
-        if (e.request.mode === 'navigate') return caches.match('./index.html');
-        if (isImage) return new Response('', { status: 204 });
+        if (e.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+        if (e.request.destination === 'image') {
+          return new Response('', { status: 204 });
+        }
       });
     })
   );
 });
 
 self.addEventListener('message', e => {
-  if (e.data === 'skipWaiting') self.skipWaiting();
-  if (e.data === 'getVersion') e.source.postMessage({ type: 'VERSION', version: CACHE_NAME });
-});
-
-self.addEventListener('waiting', e => {
-  self.clients.matchAll({ type: 'window' }).then(clients => {
-    clients.forEach(client => client.postMessage({ type: 'UPDATE_AVAILABLE', version: CACHE_NAME }));
-  });
+  if (e.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
 });
