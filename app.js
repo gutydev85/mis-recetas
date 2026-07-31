@@ -993,18 +993,11 @@ const Search = {
             actionsDiv.className = 'row-actions';
             const favBtn = document.createElement('button');
             favBtn.className = 'fav-btn ' + (recipe.favorito ? 'active' : '');
+            favBtn.setAttribute('data-id', recipe.id);
             favBtn.innerHTML = ICONS.heart;
             favBtn.addEventListener('click', function(e) { 
               e.stopPropagation(); 
               App.favorites.toggle(recipe.id); 
-              var updated = State.recipes.find(function(r) { return r.id === recipe.id; });
-              if (updated) {
-                this.classList.toggle('active', updated.favorito);
-                if (State.listFilter.type === 'favorites' && !updated.favorito) {
-                  var rowEl = this.closest('.recipe-row');
-                  if (rowEl) rowEl.remove();
-                }
-              }
             });
             actionsDiv.appendChild(favBtn);
             row.appendChild(actionsDiv);
@@ -1063,18 +1056,11 @@ const Favorites = {
             actionsDiv.className = 'row-actions';
             const favBtn = document.createElement('button');
             favBtn.className = 'fav-btn ' + (recipe.favorito ? 'active' : '');
+            favBtn.setAttribute('data-id', recipe.id);
             favBtn.innerHTML = ICONS.heart;
             favBtn.addEventListener('click', function(e) { 
               e.stopPropagation(); 
               App.favorites.toggle(recipe.id); 
-              var updated = State.recipes.find(function(r) { return r.id === recipe.id; });
-              if (updated) {
-                this.classList.toggle('active', updated.favorito);
-                if (State.listFilter.type === 'favorites' && !updated.favorito) {
-                  var rowEl = this.closest('.recipe-row');
-                  if (rowEl) rowEl.remove();
-                }
-              }
             });
             actionsDiv.appendChild(favBtn);
             row.appendChild(actionsDiv);
@@ -1108,11 +1094,22 @@ const Favorites = {
       else if (State.listFilter.type === 'category') Render.recipeList(State.recipes.filter(r => r.categoriaId === State.listFilter.id));
       else if (State.listFilter.type === 'search') Search.handle(DOM.searchInput ? DOM.searchInput.value : '');
     }
-    // Desktop sidebar re-render so the fav button updates immediately
+    // Desktop: update all fav buttons for this recipe without full re-render
     if (isDesktop()) {
-      if (State.listFilter.type === 'favorites') this.show();
-      else if (State.listFilter.type === 'category') App.recipe.showList('category', State.listFilter.id);
-      else if (State.listFilter.type === 'search') Search.handle(DOM.searchInput ? DOM.searchInput.value : '');
+      $$('.fav-btn[data-id="' + id + '"]').forEach(function(btn) {
+        btn.classList.toggle('active', recipe.favorito);
+      });
+      // If in favorites view and unfavorited, remove the row
+      if (State.listFilter.type === 'favorites' && !recipe.favorito) {
+        $$('.recipe-row').forEach(function(row) {
+          var btn = row.querySelector('.fav-btn[data-id="' + id + '"]');
+          if (btn) row.remove();
+        });
+        var sidebarList = byId('sidebar-recipes-list');
+        if (sidebarList && sidebarList.querySelectorAll('.recipe-row').length === 0) {
+          sidebarList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#10084;&#65039;</div><h3>Sin favoritos</h3><p>Marca recetas con &#10084;&#65039;</p></div>';
+        }
+      }
     }
     if (State.currentView === 'recipe-detail' && State.currentRecipeId === id) {
       if (DOM.detailFavBtn) DOM.detailFavBtn.classList.toggle('active', recipe.favorito);
@@ -1203,18 +1200,11 @@ const Recipe = {
             actionsDiv.className = 'row-actions';
             const favBtn = document.createElement('button');
             favBtn.className = 'fav-btn ' + (recipe.favorito ? 'active' : '');
+            favBtn.setAttribute('data-id', recipe.id);
             favBtn.innerHTML = ICONS.heart;
             favBtn.addEventListener('click', function(e) { 
               e.stopPropagation(); 
               App.favorites.toggle(recipe.id); 
-              var updated = State.recipes.find(function(r) { return r.id === recipe.id; });
-              if (updated) {
-                this.classList.toggle('active', updated.favorito);
-                if (State.listFilter.type === 'favorites' && !updated.favorito) {
-                  var rowEl = this.closest('.recipe-row');
-                  if (rowEl) rowEl.remove();
-                }
-              }
             });
             actionsDiv.appendChild(favBtn);
             row.appendChild(actionsDiv);
@@ -3026,6 +3016,13 @@ async function init() {
     document.body.classList.add('update-banner-visible');
   }
 
+  function dismissUpdate() {
+    const banner = document.getElementById('updateBanner');
+    if (banner) banner.classList.remove('visible');
+    document.body.classList.remove('update-banner-visible');
+    State.updateBannerShown = false;
+  }
+
   function applyUpdate() {
     const banner = document.getElementById('updateBanner');
     if (banner) banner.classList.remove('visible');
@@ -3033,9 +3030,20 @@ async function init() {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage('skipWaiting');
       // Wait for the new SW to activate, then reload
+      var reloaded = false;
       navigator.serviceWorker.addEventListener('controllerchange', function() {
-        window.location.reload();
+        if (!reloaded) {
+          reloaded = true;
+          window.location.reload();
+        }
       });
+      // Fallback: reload after 3 seconds if controllerchange doesn't fire
+      setTimeout(function() {
+        if (!reloaded) {
+          reloaded = true;
+          window.location.reload();
+        }
+      }, 3000);
     } else {
       window.location.reload();
     }
@@ -3092,7 +3100,9 @@ window.App = {
   toast: Toast,
   modal: Modal,
   audio: { toggle: function() { Settings.toggleSound(); } },
-  install: function() { PWA.install(); }
+  install: function() { PWA.install(); },
+  applyUpdate: applyUpdate,
+  dismissUpdate: dismissUpdate
 };
 
 document.addEventListener('DOMContentLoaded', init);
