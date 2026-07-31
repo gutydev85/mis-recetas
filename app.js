@@ -29,7 +29,8 @@ const CONFIG = {
     categories: 'mr_categories',
     recipes: 'mr_recipes',
     timer: 'mr_timer_state',
-    sound: 'mr_sound_enabled'
+    sound: 'mr_sound_enabled',
+    attempts: 'mr_attempts'
   },
   MAX_PHOTO_MB: 5,
   PHOTO_MAX_WIDTH: 800,
@@ -353,7 +354,11 @@ function cacheDOM() {
     'cookTitle','cookBody','cookStepNum','cookStepText','cookDots','cookNavDots',
     'cookPrevBtn','cookNextBtn','cookTtsBtn','cookQuickTimerWrap','cookQuickDisplay',
     'cookTimersPanel','cookTimersList','cookProgressBar',
-    'cookIngredientsOverlay','cookIngredientsList'
+    'cookIngredientsOverlay','cookIngredientsList',
+    'attemptsSection','attemptsToggleBtn','attemptsContent','attemptsList',
+    'attemptFormWrap','attemptPhotoInput','attemptPhotoPreview','attemptPhotoBtnText',
+    'attemptRatingStars','attemptNotesInput','attemptSaveBtn','attemptCancelBtn',
+    'attemptsGlobalList','attemptFormTitle'
   ];
   ids.forEach(id => DOM[id] = byId(id));
 }
@@ -365,7 +370,7 @@ const Nav = {
     }
 
     if (isDesktop()) {
-      const panelViews = ['recipe-detail', 'recipe-form', 'category-form', 'settings', 'cook-mode'];
+      const panelViews = ['recipe-detail', 'recipe-form', 'category-form', 'settings', 'cook-mode', 'attempts'];
       panelViews.forEach(v => {
         const el = byId('view-' + v);
         if (el) el.classList.remove('active');
@@ -814,6 +819,7 @@ const Recipe = {
     this._renderPortionUI(recipe);
     this.renderSteps(recipe);
     App.timer.renderDetailTimers(recipe);
+    App.attempts.renderForRecipe(recipe.id);
     DOM.detailTime.textContent = (recipe.tiempoMinutos || 0) + ' min';
     const cat = State.categories.find(c => c.id === recipe.categoriaId);
     DOM.detailCategory.textContent = cat ? cat.nombre : 'Sin categoria';
@@ -1959,6 +1965,251 @@ const CookMode = (() => {
   };
 })();
 
+
+const Attempts = {
+  _data: [],
+  _editingAttemptId: null,
+  _currentRecipeId: null,
+  _currentPhotoBase64: '',
+
+  load() {
+    try {
+      const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.attempts);
+      this._data = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      this._data = [];
+    }
+    if (!Array.isArray(this._data)) this._data = [];
+  },
+
+  save() {
+    try {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(this._data));
+    } catch (e) {
+      App.toast.show('Error guardando intentos', Icons.warning);
+    }
+  },
+
+  getForRecipe(recipeId) {
+    return this._data
+      .filter(a => a.recipeId === recipeId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  },
+
+  getAll() {
+    return this._data
+      .slice()
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  },
+
+  renderStars(rating, interactive) {
+    var html = '';
+    for (var i = 1; i <= 5; i++) {
+      var filled = i <= rating;
+      var cls = filled ? 'active' : '';
+      var star = filled ? '&#9733;' : '&#9734;';
+      if (interactive) {
+        html += '<span class="' + cls + '" data-value="' + i + '" onclick="App.attempts.setRating(' + i + ')">' + star + '</span>';
+      } else {
+        html += '<span class="' + cls + '">' + star + '</span>';
+      }
+    }
+    return html;
+  },
+
+  renderForRecipe(recipeId) {
+    this._currentRecipeId = recipeId;
+    if (!DOM.attemptsSection) return;
+    var list = this.getForRecipe(recipeId);
+    if (list.length === 0) {
+      DOM.attemptsSection.style.display = 'block';
+      DOM.attemptsList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#127860;</div><h3>Sin intentos</h3><p>Añade tu primer intento</p></div>';
+      return;
+    }
+    DOM.attemptsSection.style.display = 'block';
+    DOM.attemptsList.innerHTML = list.map(function(a) {
+      var photoHtml = a.photo ? '<img src="' + a.photo + '" class="attempt-card-photo" alt="">' : '';
+      return '<div class="attempt-card">' +
+        '<div class="attempt-card-header">' +
+          '<div class="attempt-card-date">' + new Date(a.date).toLocaleDateString('es-ES', {year:'numeric', month:'short', day:'numeric'}) + '</div>' +
+          '<div class="attempt-card-stars">' + App.attempts.renderStars(a.rating || 0, false) + '</div>' +
+        '</div>' +
+        photoHtml +
+        '<div class="attempt-card-notes">' + escapeHtml(a.notes || '') + '</div>' +
+        '<div class="attempt-card-actions">' +
+          '<button onclick="App.attempts.showForm(' + "'" + a.id + "'" + ')">' + Icons.edit + ' Editar</button>' +
+          '<button class="attempt-delete" onclick="App.attempts.confirmDelete(' + "'" + a.id + "'" + ')">' + Icons.trash + ' Eliminar</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  },
+
+  toggleSection() {
+    if (!DOM.attemptsContent) return;
+    var isOpen = DOM.attemptsContent.style.display !== 'none';
+    DOM.attemptsContent.style.display = isOpen ? 'none' : 'block';
+    var btn = DOM.attemptsToggleBtn || DOM.attemptsSection.querySelector('.attempts-toggle');
+    if (btn) btn.classList.toggle('open', !isOpen);
+    var icon = byId('attemptsToggleIcon');
+    if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+  },
+
+  showForm(attemptId) {
+    attemptId = attemptId || null;
+    this._editingAttemptId = attemptId;
+    this._currentPhotoBase64 = '';
+    if (!DOM.attemptFormWrap) return;
+    DOM.attemptFormWrap.style.display = 'block';
+    if (DOM.attemptFormTitle) DOM.attemptFormTitle.textContent = attemptId ? 'Editar intento' : 'Nuevo intento';
+
+    if (attemptId) {
+      var a = this._data.find(function(x) { return x.id === attemptId; });
+      if (a) {
+        this.setRating(a.rating || 0);
+        if (DOM.attemptNotesInput) DOM.attemptNotesInput.value = a.notes || '';
+        if (a.photo) {
+          this._currentPhotoBase64 = a.photo;
+          if (DOM.attemptPhotoPreview) { DOM.attemptPhotoPreview.src = a.photo; DOM.attemptPhotoPreview.classList.add('visible'); }
+          if (DOM.attemptPhotoBtnText) DOM.attemptPhotoBtnText.textContent = 'Cambiar foto';
+        } else {
+          if (DOM.attemptPhotoPreview) { DOM.attemptPhotoPreview.src = ''; DOM.attemptPhotoPreview.classList.remove('visible'); }
+          if (DOM.attemptPhotoBtnText) DOM.attemptPhotoBtnText.textContent = 'Añadir foto';
+        }
+      }
+    } else {
+      this.setRating(0);
+      if (DOM.attemptNotesInput) DOM.attemptNotesInput.value = '';
+      if (DOM.attemptPhotoPreview) { DOM.attemptPhotoPreview.src = ''; DOM.attemptPhotoPreview.classList.remove('visible'); }
+      if (DOM.attemptPhotoBtnText) DOM.attemptPhotoBtnText.textContent = 'Añadir foto';
+    }
+
+    setTimeout(function() {
+      if (DOM.attemptFormWrap) DOM.attemptFormWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  },
+
+  hideForm() {
+    this._editingAttemptId = null;
+    this._currentPhotoBase64 = '';
+    if (DOM.attemptFormWrap) DOM.attemptFormWrap.style.display = 'none';
+    if (DOM.attemptNotesInput) DOM.attemptNotesInput.value = '';
+    if (DOM.attemptPhotoPreview) { DOM.attemptPhotoPreview.src = ''; DOM.attemptPhotoPreview.classList.remove('visible'); }
+    if (DOM.attemptPhotoBtnText) DOM.attemptPhotoBtnText.textContent = 'Añadir foto';
+    this.setRating(0);
+  },
+
+  setRating(n) {
+    if (!DOM.attemptRatingStars) return;
+    DOM.attemptRatingStars.setAttribute('data-rating', n);
+    var spans = DOM.attemptRatingStars.querySelectorAll('span');
+    spans.forEach(function(s, i) {
+      var val = i + 1;
+      s.classList.toggle('active', val <= n);
+      s.innerHTML = val <= n ? '&#9733;' : '&#9734;';
+    });
+  },
+
+  handlePhoto(input) {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > CONFIG.MAX_PHOTO_MB * 1024 * 1024) {
+      App.toast.show('La foto es muy grande. Max: 5MB', Icons.warning);
+      input.value = '';
+      return;
+    }
+    if (DOM.attemptPhotoBtnText) DOM.attemptPhotoBtnText.textContent = 'Comprimiendo...';
+    var reader = new FileReader();
+    var self = this;
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var scale = Math.min(1, CONFIG.PHOTO_MAX_WIDTH / img.width);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        self._currentPhotoBase64 = canvas.toDataURL('image/jpeg', CONFIG.PHOTO_QUALITY);
+        if (DOM.attemptPhotoPreview) { DOM.attemptPhotoPreview.src = self._currentPhotoBase64; DOM.attemptPhotoPreview.classList.add('visible'); }
+        if (DOM.attemptPhotoBtnText) DOM.attemptPhotoBtnText.textContent = 'Cambiar foto';
+      };
+      img.onerror = function() { App.toast.show('Error al cargar la imagen', Icons.error); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  },
+
+  saveAttempt() {
+    if (!this._currentRecipeId) return;
+    var rating = parseInt(DOM.attemptRatingStars ? DOM.attemptRatingStars.getAttribute('data-rating') : '0', 10) || 0;
+    var notes = DOM.attemptNotesInput ? DOM.attemptNotesInput.value.trim() : '';
+
+    if (this._editingAttemptId) {
+      var idx = this._data.findIndex(function(x) { return x.id === App.attempts._editingAttemptId; });
+      if (idx !== -1) {
+        this._data[idx].rating = rating;
+        this._data[idx].notes = notes;
+        if (App.attempts._currentPhotoBase64) this._data[idx].photo = App.attempts._currentPhotoBase64;
+      }
+    } else {
+      this._data.push({
+        id: generateId('a'),
+        recipeId: this._currentRecipeId,
+        date: new Date().toISOString(),
+        rating: rating,
+        notes: notes,
+        photo: this._currentPhotoBase64 || ''
+      });
+    }
+    this.save();
+    this.hideForm();
+    this.renderForRecipe(this._currentRecipeId);
+    App.toast.show(this._editingAttemptId ? 'Intento actualizado' : 'Intento guardado', Icons.check);
+    AudioEngine.success();
+  },
+
+  confirmDelete(attemptId) {
+    var a = this._data.find(function(x) { return x.id === attemptId; });
+    Modal.show('Eliminar intento', 'Seguro? No se puede deshacer.', function() {
+      App.attempts._data = App.attempts._data.filter(function(x) { return x.id !== attemptId; });
+      App.attempts.save();
+      if (App.attempts._currentRecipeId) {
+        App.attempts.renderForRecipe(App.attempts._currentRecipeId);
+      }
+      App.toast.show('Intento eliminado', Icons.trash);
+      AudioEngine.delete();
+    });
+  },
+
+  showGlobal() {
+    this.load();
+    var all = this.getAll();
+    Nav.set('attempts');
+    if (!DOM.attemptsGlobalList) return;
+    if (all.length === 0) {
+      DOM.attemptsGlobalList.innerHTML = '<div class="empty-state" style="padding:60px 20px;"><div class="big-icon">&#127860;</div><h3>Sin intentos</h3><p>Aun no has registrado ningun intento</p></div>';
+      return;
+    }
+    DOM.attemptsGlobalList.innerHTML = all.map(function(a) {
+      var recipe = State.recipes.find(function(r) { return r.id === a.recipeId; });
+      var recipeName = recipe ? recipe.nombre : 'Receta eliminada';
+      var photoHtml = a.photo ? '<img src="' + a.photo + '" class="attempt-global-photo" alt="">' : '';
+      return '<div class="attempt-global-card" onclick="App.recipe.showDetail(' + "'" + a.recipeId + "'" + ')">' +
+        '<div class="attempt-global-header">' +
+          '<div class="attempt-global-recipe">' + escapeHtml(recipeName) + '</div>' +
+          '<div class="attempt-global-date">' + new Date(a.date).toLocaleDateString('es-ES', {year:'numeric', month:'short', day:'numeric'}) + '</div>' +
+        '</div>' +
+        '<div class="attempt-global-meta">' +
+          '<div class="attempt-global-stars">' + App.attempts.renderStars(a.rating || 0, false) + '</div>' +
+        '</div>' +
+        photoHtml +
+        '<div class="attempt-global-notes">' + escapeHtml(a.notes || '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+};
+
 const DataIO = {
   export() {
     const data = { version: CONFIG.VERSION, exportDate: new Date().toISOString(), categories: State.categories, recipes: State.recipes };
@@ -2078,6 +2329,7 @@ function init() {
   cacheDOM();
   AudioEngine.loadSetting();
   Storage.load();
+  Attempts.load();
   PWA.setup();
   Render.categories();
 
@@ -2089,7 +2341,8 @@ function init() {
     if (e.key === 'Escape') {
       if (DOM.modalOverlay && DOM.modalOverlay.classList.contains('active')) Modal.close();
       else if (State.currentView === 'cook-mode') CookMode.exit();
-      else if (State.currentView !== 'home') Nav.home();
+      else if (State.currentView === 'attempts') Nav.home();
+    else if (State.currentView !== 'home') Nav.home();
     }
   });
 
@@ -2134,6 +2387,8 @@ function init() {
       Nav.home();
     } else if (State.currentView === 'settings') {
       Nav.home();
+    } else if (State.currentView === 'attempts') {
+      Nav.home();
     } else if (State.currentView === 'recipe-list') {
       Nav.home();
     }
@@ -2162,6 +2417,7 @@ window.App = {
   favorites: Favorites,
   category: Category,
   recipe: Recipe,
+  attempts: Attempts,
   photo: Photo,
   timer: Timer,
   cookMode: CookMode,

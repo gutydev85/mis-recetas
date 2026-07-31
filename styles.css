@@ -3268,3 +3268,262 @@ html, body {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ===== MIS INTENTOS ===== */
+.attempts-section {
+  margin-bottom: 30px;
+}
+.attempts-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-sec);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.8px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  font-family: var(--font-body);
+}
+.attempts-toggle:hover {
+  background: var(--surface-raised);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+.attempts-toggle:active {
+  transform: scale(0.98);
+}
+.attempts-toggle .section-dot {
+  background: var(--accent);
+  opacity: 0.7;
+}
+.attempts-toggle svg {
+  margin-left: auto;
+  color: var(--text-dim);
+  transition: transform 0.3s var(--ease-spring);
+}
+.attempts-toggle.open svg {
+  transform: rotate(180deg);
+}
+.attempts-content {
+  padding-top: 16px;
+  animation: fadeIn 0.3s ease;
+}
+.attempt-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.25s var(--ease-out);
+  animation: cardIn 0.4s var(--ease-out) both;
+}
+.attempt-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+.attempt-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.attempt-card-date {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.attempt-card-stars {
+  display: flex;
+  gap: 2px;
+}
+.attempt-card-stars span {
+  font-size: 16px;
+  color: var(--accent);
+}
+.attempt-card-stars span.empty {
+  color: var(--border-hover);
+}
+.attempt-card-photo {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+  animation: photoIn 0.4s var(--ease-out);
+}
+.attempt-card-notes {
+  font-size: 14px;
+  color: var(--text-sec);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.attempt-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.attempt-card-actions button {
+  padding: 8px 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.attempt-card-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.attempt-card-actions .attempt-delete:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+/* Formulario de intento */
+.attempt-form {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-top: 14px;
+  animation: fadeIn 0.3s ease;
+}
+.attempt-form-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
+  letter-spacing: 0.2px;
+}
+.attempt-stars-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.attempt-stars-input span {
+  font-size: 13px;
+  color: var(--text-sec);
+  font-weight: 500;
+}
+.star-rating {
+  display: flex;
+  gap: 4px;
+}
+.star-rating span {
+  font-size: 24px;
+  color: var(--border-hover);
+  cursor: pointer;
+  transition: all 0.15s var(--ease-spring);
+  line-height: 1;
+}
+.star-rating span:hover,
+.star-rating span.active {
+  color: var(--accent);
+  transform: scale(1.15);
+}
+.star-rating span:active {
+  transform: scale(0.95);
+}
+.attempt-photo-group {
+  margin-bottom: 16px;
+}
+
+/* Quick action intentos */
+.qa-attempt {
+  background: rgba(212, 184, 150, 0.10);
+  color: var(--accent-bright);
+}
+.qa-btn:hover .qa-attempt {
+  background: rgba(212, 184, 150, 0.18);
+}
+
+/* Vista global de intentos */
+.attempt-global-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+  animation: cardIn 0.4s var(--ease-out) both;
+}
+.attempt-global-card:hover {
+  background: var(--surface-raised);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.attempt-global-card:active {
+  transform: translateY(-1px) scale(0.995);
+}
+.attempt-global-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.attempt-global-recipe {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.attempt-global-date {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.attempt-global-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.attempt-global-stars {
+  display: flex;
+  gap: 2px;
+}
+.attempt-global-stars span {
+  font-size: 14px;
+  color: var(--accent);
+}
+.attempt-global-stars span.empty {
+  color: var(--border-hover);
+}
+.attempt-global-photo {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  animation: photoIn 0.4s var(--ease-out);
+}
+.attempt-global-notes {
+  font-size: 13px;
+  color: var(--text-sec);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
