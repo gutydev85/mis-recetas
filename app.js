@@ -335,37 +335,19 @@ const FileStorage = (() => {
       const perm = await handle.queryPermission({ mode: 'readwrite' });
       if (perm === 'granted') {
         dirHandle = handle;
-      } else if (perm === 'prompt') {
-        const newPerm = await handle.requestPermission({ mode: 'readwrite' });
-        if (newPerm === 'granted') {
-          dirHandle = handle;
-        } else {
-          localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
-          await removeHandle();
-          return;
-        }
+        active = true;
+        await load();
       } else {
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
-        await removeHandle();
-        return;
+        // Permission is prompt or denied — do NOT auto-request (requires user gesture)
+        // Keep dirHandle in memory so we can request later, but stay inactive
+        dirHandle = handle;
+        active = false;
+        console.log('FileStorage: permission not granted, falling back to localStorage');
       }
-      // Verify files exist before going active
-      const cats = await readFile('categories.json');
-      const recs = await readFile('recipes.json');
-      if (cats === null && recs === null) {
-        // No files in folder but flag says active — reset
-        dirHandle = null;
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
-        await removeHandle();
-        return;
-      }
-      active = true;
-      await load();
     } catch (e) {
       console.error('FileStorage init error', e);
       active = false;
       dirHandle = null;
-      localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
     }
   }
 
@@ -394,10 +376,8 @@ const FileStorage = (() => {
       await saveHandle(handle);
       localStorage.setItem(CONFIG.STORAGE_KEYS.useFileStorage, 'true');
       active = true;
-      localStorage.removeItem(CONFIG.STORAGE_KEYS.categories);
-      localStorage.removeItem(CONFIG.STORAGE_KEYS.recipes);
-      localStorage.removeItem(CONFIG.STORAGE_KEYS.attempts);
-      localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
+      // NOTE: we intentionally do NOT clear localStorage — it serves as backup
+      // if folder permission is later revoked.
       return true;
     } catch (e) {
       dirHandle = null;
@@ -409,19 +389,32 @@ const FileStorage = (() => {
     }
   }
 
-  async function deactivate() {
-    if (!active || !dirHandle) return false;
+  async function reauthorize() {
+    if (!dirHandle) return false;
     try {
-      await migrateToLocal();
-      // Verify localStorage has data
-      const cats = localStorage.getItem(CONFIG.STORAGE_KEYS.categories);
-      const recs = localStorage.getItem(CONFIG.STORAGE_KEYS.recipes);
-      if (!cats && !recs) {
-        // Fallback: write current memory state
-        localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
-        localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
-        localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(Attempts._data));
+      const perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        active = true;
+        await load();
+        Toast.show('Acceso a carpeta restaurado', Icons.check);
+        AudioEngine.success();
+        Render.categories();
+        return true;
       }
+      Toast.show('Permiso denegado para la carpeta', Icons.warning);
+      return false;
+    } catch (e) {
+      console.error('reauthorize error', e);
+      return false;
+    }
+  }
+
+  async function deactivate() {
+    if (!active && !dirHandle) return false;
+    try {
+      // Migrate from folder back to localStorage
+      await migrateToLocal();
+      // Clean up folder files
       await clearFolder();
       await removeHandle();
       localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
@@ -507,7 +500,9 @@ const FileStorage = (() => {
       });
     } catch (e) {
       console.error('FileStorage.save error', e);
-      Toast.show('Error guardando en carpeta', Icons.warning);
+      // If save fails, deactivate gracefully and fall back to localStorage
+      active = false;
+      Toast.show('Error guardando en carpeta. Usando localStorage.', Icons.warning);
     }
   }
 
@@ -537,10 +532,12 @@ const FileStorage = (() => {
   return {
     get active() { return active; },
     get dirName() { return dirHandle ? dirHandle.name : ''; },
+    get needsReauth() { return !!dirHandle && !active; },
     isSupported,
     init,
     activate,
     deactivate,
+    reauthorize,
     save,
     load
   };
@@ -2621,6 +2618,12 @@ const Settings = {
         Toast.show('Datos migrados a localStorage', Icons.check);
         AudioEngine.success();
       }
+    } else if (FileStorage.needsReauth) {
+      const ok = await FileStorage.reauthorize();
+      if (ok) {
+        Toast.show('Carpeta reactivada', Icons.check);
+        AudioEngine.success();
+      }
     } else {
       const ok = await FileStorage.activate();
       if (ok) {
@@ -2671,6 +2674,9 @@ async function init() {
   await FileStorage.init();
   await Storage.load();
   Attempts.load();
+  if (FileStorage.needsReauth) {
+    Toast.show('Toque el toggle de carpeta para reactivar el acceso', Icons.warning);
+  }
   PWA.setup();
   Render.categories();
 
