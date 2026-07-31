@@ -1128,7 +1128,10 @@ const Recipe = {
       const sidebarWrap = byId('sidebar-recipes-wrap');
       const sidebarList = byId('sidebar-recipes-list');
       const sidebarTitle = byId('sidebar-recipes-title');
-      if (sidebarWrap) sidebarWrap.classList.remove('hidden');
+      if (sidebarWrap) {
+        sidebarWrap.classList.remove('hidden');
+        sidebarWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
       if (sidebarTitle) sidebarTitle.textContent = type === 'category' ? (cat ? cat.nombre : 'Sin categoria') : 'Recetas';
       if (sidebarList) {
         sidebarList.innerHTML = '';
