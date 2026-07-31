@@ -273,7 +273,10 @@ const FileStorage = (() => {
   const KEY = 'dirHandle';
 
   function isSupported() {
-    return 'showDirectoryPicker' in window && window.isSecureContext;
+    return 'showDirectoryPicker' in window && window.isSecureContext && !isMobile();
+  }
+  function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }
 
   function openDB() {
@@ -368,7 +371,7 @@ const FileStorage = (() => {
 
   async function activate() {
     if (!isSupported()) {
-      Toast.show('Requiere HTTPS o localhost para funcionar', Icons.warning);
+      Toast.show(isMobile() ? 'Solo disponible en escritorio (Windows/macOS/Linux)' : 'Requiere HTTPS o localhost para funcionar', Icons.warning);
       return false;
     }
     try {
@@ -2603,13 +2606,13 @@ const Settings = {
       if (FileStorage.active) {
         DOM.fileStorageDesc.textContent = 'Carpeta: ' + (FileStorage.dirName || 'Dispositivo');
       } else {
-        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : 'Requiere HTTPS o localhost';
+        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : (isMobile() ? 'Solo disponible en escritorio' : 'Requiere HTTPS o localhost');
       }
     }
   },
   async toggleFileStorage() {
     if (!FileStorage.isSupported()) {
-      Toast.show('Requiere HTTPS o localhost para funcionar', Icons.warning);
+      Toast.show(isMobile() ? 'Solo disponible en escritorio (Windows/macOS/Linux)' : 'Requiere HTTPS o localhost para funcionar', Icons.warning);
       return;
     }
     if (FileStorage.active) {
