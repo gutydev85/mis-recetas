@@ -2956,7 +2956,7 @@ async function init() {
       if (DOM.modalOverlay && DOM.modalOverlay.classList.contains('active')) Modal.close();
       else if (State.currentView === 'cook-mode') CookMode.exit();
       else if (State.currentView === 'attempts') Nav.home();
-    else if (State.currentView !== 'home') Nav.home();
+      else if (State.currentView !== 'home') Nav.home();
     }
   });
 
