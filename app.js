@@ -2928,14 +2928,15 @@ const PWA = {
 };
 
 function hideSplash() {
-  const splash = DOM.splash;
-  if (splash) {
+  var splash = document.getElementById('splash');
+  if (splash && !splash.classList.contains('hidden')) {
     splash.classList.add('hidden');
     setTimeout(function() { splash.remove(); }, 700);
   }
 }
 
 async function init() {
+  try {
   cacheDOM();
   AudioEngine.loadSetting();
   await FileStorage.init();
@@ -3083,6 +3084,12 @@ async function init() {
       if (homeView) homeView.classList.add('active');
     }
   }, 200));
+
+  } catch (e) {
+    console.error('Init error:', e);
+  } finally {
+    hideSplash();
+  }
 }
 
 window.App = {

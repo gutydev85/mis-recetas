@@ -107,6 +107,11 @@ html, body {
   justify-content: center;
   transition: opacity 0.7s var(--ease-out), visibility 0.7s;
 }
+/* Fallback: auto-hide splash after 5s if JS fails */
+.splash-screen { animation: splashAutoHide 0.6s ease-out 5s forwards; }
+@keyframes splashAutoHide { to { opacity:0; visibility:hidden; pointer-events:none; } }
+.splash-screen.hidden { animation: none; }
+
 .splash-screen.hidden {
   opacity: 0;
   visibility: hidden;

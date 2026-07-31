@@ -38,6 +38,13 @@
         <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
       </svg>
     </div>
+<script>
+  // Safety: hide splash after 4 seconds even if app.js fails
+  setTimeout(function(){
+    var s=document.getElementById('splash');
+    if(s){s.classList.add('hidden');setTimeout(function(){s.remove();},600);}
+  },4000);
+</script>
     <div class="splash-title">Mi Recetario</div>
     <div class="splash-subtitle">Tu cocina, tu ritmo</div>
     <div class="splash-loader"><div class="splash-loader-bar"></div></div>
