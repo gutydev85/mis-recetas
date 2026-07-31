@@ -10,6 +10,9 @@ const FILES_TO_CACHE = [
   './icon-180.png'
 ];
 
+// Track if there's a new version waiting
+let waitingSW = null;
+
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
@@ -20,8 +23,9 @@ self.addEventListener('install', e => {
           })
         )
       );
-    }).then(() => self.skipWaiting())
+    })
   );
+  // Do NOT skipWaiting automatically - wait for user confirmation
 });
 
 self.addEventListener('activate', e => {
@@ -33,14 +37,11 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Skip non-GET requests
   if (e.request.method !== 'GET') return;
-
   e.respondWith(
     caches.match(e.request).then(response => {
       if (response) return response;
       return fetch(e.request).then(networkResponse => {
-        // Cache successful GET requests for static assets
         if (networkResponse && networkResponse.status === 200) {
           const clone = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
@@ -52,11 +53,26 @@ self.addEventListener('fetch', e => {
         if (e.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
-        // Return a simple offline fallback for images
         if (e.request.destination === 'image') {
           return new Response('', { status: 204 });
         }
       });
     })
   );
+});
+
+// Listen for messages from the client
+self.addEventListener('message', e => {
+  if (e.data === 'skipWaiting') {
+    self.skipWaiting();
+  }
+});
+
+// When a new SW is waiting, notify all clients
+self.addEventListener('waiting', e => {
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({ type: 'UPDATE_AVAILABLE' });
+    });
+  });
 });

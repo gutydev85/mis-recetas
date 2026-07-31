@@ -978,7 +978,7 @@ const Search = {
             row.style.animationDelay = (i * 60) + 'ms';
             row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
               '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
-              '<button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + (recipe.favorito ? '&#10084;&#65039;' : '&#129293;') + '</button>';
+              '<div class="row-actions"><button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + ICONS.heart + '</button></div>';
             row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
             frag.appendChild(row);
           });
@@ -1146,7 +1146,7 @@ const Recipe = {
             row.style.animationDelay = (i * 60) + 'ms';
             row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
               '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
-              '<button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + (recipe.favorito ? '&#10084;&#65039;' : '&#129293;') + '</button>';
+              '<div class="row-actions"><button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + ICONS.heart + '</button></div>';
             row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
             frag.appendChild(row);
           });
@@ -2876,16 +2876,57 @@ async function init() {
   });
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      reg.addEventListener('updatefound', () => {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+      // Check for updates periodically (every 30 min)
+      setInterval(function() { reg.update(); }, 30 * 60 * 1000);
+
+      // Listen for new service worker waiting
+      reg.addEventListener('updatefound', function() {
         const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function() {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            App.toast.show('Actualizacion disponible. Recarga la app.', Icons.refresh);
+            // New version is waiting - show update banner
+            showUpdateBanner();
           }
         });
       });
+
+      // If the waiting SW is already there, show banner immediately
+      if (reg.waiting) {
+        showUpdateBanner();
+      }
     });
+
+    // Listen for messages from SW
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'UPDATE_AVAILABLE') {
+        showUpdateBanner();
+      }
+    });
+  }
+
+  function showUpdateBanner() {
+    if (State.updateBannerShown) return;
+    State.updateBannerShown = true;
+    const banner = document.getElementById('updateBanner');
+    if (banner) banner.classList.add('visible');
+    document.body.classList.add('update-banner-visible');
+  }
+
+  function applyUpdate() {
+    const banner = document.getElementById('updateBanner');
+    if (banner) banner.classList.remove('visible');
+    document.body.classList.remove('update-banner-visible');
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage('skipWaiting');
+      // Wait for the new SW to activate, then reload
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        window.location.reload();
+      });
+    } else {
+      window.location.reload();
+    }
   }
 
   window.addEventListener('popstate', function(e) {
