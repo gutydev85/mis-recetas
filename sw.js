@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mi-recetario-v4';
+const CACHE_NAME = 'mi-recetario-v5';
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -6,7 +6,8 @@ const FILES_TO_CACHE = [
   './app.js',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-180.png'
 ];
 
 self.addEventListener('install', e => {

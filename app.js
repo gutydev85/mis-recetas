@@ -30,6 +30,7 @@ const CONFIG = {
     recipes: 'mr_recipes',
     timer: 'mr_timer_state',
     sound: 'mr_sound_enabled',
+    useFileStorage: 'mr_use_fs',
     attempts: 'mr_attempts'
   },
   MAX_PHOTO_MB: 5,
@@ -264,8 +265,237 @@ const State = {
   get category() { return this.categories.find(c => c.id === this.editingCategoryId) || null; }
 };
 
+const FileStorage = (() => {
+  let active = false;
+  let dirHandle = null;
+  const DB_NAME = 'mr_fs_db';
+  const STORE_NAME = 'handles';
+  const KEY = 'dirHandle';
+
+  function isSupported() {
+    return 'showDirectoryPicker' in window;
+  }
+
+  function openDB() {
+    return new Promise(function(resolve, reject) {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function(e) {
+        e.target.result.createObjectStore(STORE_NAME);
+      };
+      req.onsuccess = function(e) { resolve(e.target.result); };
+      req.onerror = function() { reject(); };
+    });
+  }
+
+  function saveHandle(handle) {
+    return openDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(handle, KEY);
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(); };
+      });
+    });
+  }
+
+  function getHandle() {
+    return openDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const req = tx.objectStore(STORE_NAME).get(KEY);
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { reject(); };
+      });
+    });
+  }
+
+  function removeHandle() {
+    return openDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(KEY);
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(); };
+      });
+    });
+  }
+
+  async function init() {
+    try {
+      const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.useFileStorage);
+      if (saved !== 'true') return;
+      const handle = await getHandle();
+      if (handle) {
+        const perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted' || (perm === 'prompt' && await handle.requestPermission({ mode: 'readwrite' }) === 'granted')) {
+          dirHandle = handle;
+          active = true;
+        } else {
+          localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+          await removeHandle();
+        }
+      } else {
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+      }
+    } catch (e) {
+      console.error('FileStorage init error', e);
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+    }
+  }
+
+  async function activate() {
+    if (!isSupported()) {
+      Toast.show('Tu navegador no soporta esta funcion', Icons.warning);
+      return false;
+    }
+    try {
+      const handle = await window.showDirectoryPicker();
+      dirHandle = handle;
+      await saveHandle(handle);
+      localStorage.setItem(CONFIG.STORAGE_KEYS.useFileStorage, 'true');
+      active = true;
+      await migrateToFolder();
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.categories);
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.recipes);
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.attempts);
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
+      return true;
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        console.error('activate error', e);
+        Toast.show('Error al acceder a la carpeta', Icons.error);
+      }
+      return false;
+    }
+  }
+
+  async function deactivate() {
+    if (!active || !dirHandle) return false;
+    try {
+      await migrateToLocal();
+      await clearFolder();
+      await removeHandle();
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+      dirHandle = null;
+      active = false;
+      return true;
+    } catch (e) {
+      console.error('deactivate error', e);
+      Toast.show('Error al migrar datos', Icons.error);
+      return false;
+    }
+  }
+
+  async function writeFile(name, data) {
+    if (!dirHandle) return;
+    try {
+      const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(data, null, 2));
+      await writable.close();
+    } catch (e) {
+      console.error('writeFile error', e);
+      throw e;
+    }
+  }
+
+  async function readFile(name) {
+    if (!dirHandle) return null;
+    try {
+      const fileHandle = await dirHandle.getFileHandle(name);
+      const file = await fileHandle.getFile();
+      const text = await file.text();
+      return JSON.parse(text);
+    } catch (e) {
+      if (e.name === 'NotFoundError') return null;
+      console.error('readFile error', e);
+      return null;
+    }
+  }
+
+  async function migrateToFolder() {
+    const cats = State.categories;
+    const recs = State.recipes;
+    const atts = Attempts._data;
+    const sound = localStorage.getItem(CONFIG.STORAGE_KEYS.sound);
+    const timer = localStorage.getItem(CONFIG.STORAGE_KEYS.timer);
+    await writeFile('categories.json', cats);
+    await writeFile('recipes.json', recs);
+    await writeFile('attempts.json', atts);
+    await writeFile('settings.json', { sound: sound, timer: timer });
+  }
+
+  async function migrateToLocal() {
+    const cats = await readFile('categories.json') || [];
+    const recs = await readFile('recipes.json') || [];
+    const atts = await readFile('attempts.json') || [];
+    const settings = await readFile('settings.json') || {};
+    State.categories = cats;
+    State.recipes = recs;
+    Attempts._data = atts;
+    if (settings.sound !== undefined) {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.sound, settings.sound);
+      AudioEngine.enabled = settings.sound !== 'false';
+    }
+    if (settings.timer) {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.timer, settings.timer);
+    }
+  }
+
+  async function clearFolder() {
+    if (!dirHandle) return;
+    const files = ['categories.json', 'recipes.json', 'attempts.json', 'settings.json'];
+    for (const f of files) {
+      try { await dirHandle.removeEntry(f); } catch (e) {}
+    }
+  }
+
+  async function save() {
+    if (!active) return;
+    await writeFile('categories.json', State.categories);
+    await writeFile('recipes.json', State.recipes);
+    await writeFile('attempts.json', Attempts._data);
+    await writeFile('settings.json', { sound: AudioEngine.enabled, timer: localStorage.getItem(CONFIG.STORAGE_KEYS.timer) });
+  }
+
+  async function load() {
+    if (!active) return;
+    const cats = await readFile('categories.json');
+    const recs = await readFile('recipes.json');
+    const atts = await readFile('attempts.json');
+    const settings = await readFile('settings.json');
+    if (cats) State.categories = cats;
+    if (recs) State.recipes = recs;
+    if (atts) Attempts._data = atts;
+    if (settings) {
+      if (settings.sound !== undefined) {
+        AudioEngine.enabled = settings.sound !== 'false';
+      }
+      if (settings.timer) {
+        localStorage.setItem(CONFIG.STORAGE_KEYS.timer, settings.timer);
+      }
+    }
+  }
+
+  return {
+    get active() { return active; },
+    get dirName() { return dirHandle ? dirHandle.name : ''; },
+    isSupported,
+    init,
+    activate,
+    deactivate,
+    save,
+    load
+  };
+})();
+
 const Storage = {
-  load() {
+  async load() {
+    if (FileStorage.active) {
+      await FileStorage.load();
+      this.normalizeAll();
+      return;
+    }
     try {
       const cats = localStorage.getItem(CONFIG.STORAGE_KEYS.categories);
       const recs = localStorage.getItem(CONFIG.STORAGE_KEYS.recipes);
@@ -280,6 +510,10 @@ const Storage = {
   },
 
   save() {
+    if (FileStorage.active) {
+      FileStorage.save();
+      return;
+    }
     try {
       localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
       localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
@@ -351,6 +585,7 @@ function cacheDOM() {
     'recipeTimersEditor','recipeDeleteBtn','stepsEditor','stepPhotoInput',
     'catFormTitle','catNameInput','catDeleteBtn',
     'soundToggle','soundDesc',
+    'fileStorageToggle','fileStorageDesc',
     'cookTitle','cookBody','cookStepNum','cookStepText','cookDots','cookNavDots',
     'cookPrevBtn','cookNextBtn','cookTtsBtn','cookQuickTimerWrap','cookQuickDisplay',
     'cookTimersPanel','cookTimersList','cookProgressBar',
@@ -1973,6 +2208,10 @@ const Attempts = {
   _currentPhotoBase64: '',
 
   load() {
+    if (FileStorage.active) {
+      if (!Array.isArray(this._data)) this._data = [];
+      return;
+    }
     try {
       const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.attempts);
       this._data = raw ? JSON.parse(raw) : [];
@@ -1983,6 +2222,10 @@ const Attempts = {
   },
 
   save() {
+    if (FileStorage.active) {
+      FileStorage.save();
+      return;
+    }
     try {
       localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(this._data));
     } catch (e) {
@@ -2260,7 +2503,13 @@ const DataIO = {
     Modal.show('Borrar todo', 'Esto eliminara TODAS las recetas y categorias. No se puede deshacer.', function() {
       State.categories = [];
       State.recipes = [];
-      Storage.save();
+      Attempts._data = [];
+      if (FileStorage.active) {
+        FileStorage.save();
+      } else {
+        Storage.save();
+        Attempts.save();
+      }
       Render.categories();
       Nav.home();
       Toast.show('Todos los datos eliminados', Icons.trash);
@@ -2272,6 +2521,7 @@ const Settings = {
   show() {
     Nav.set('settings');
     this.updateSoundToggle();
+    this.updateFileStorageToggle();
     this.updateAboutStats();
   },
   updateAboutStats() {
@@ -2290,6 +2540,39 @@ const Settings = {
     const on = AudioEngine.toggle();
     this.updateSoundToggle();
     Toast.show(on ? 'Sonidos activados' : 'Sonidos silenciados', on ? Icons.sound : Icons.mute);
+  },
+  updateFileStorageToggle() {
+    if (DOM.fileStorageToggle) {
+      DOM.fileStorageToggle.classList.toggle('active', FileStorage.active);
+    }
+    if (DOM.fileStorageDesc) {
+      if (FileStorage.active) {
+        DOM.fileStorageDesc.textContent = 'Carpeta: ' + (FileStorage.dirName || 'Dispositivo');
+      } else {
+        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : 'Tu navegador no soporta esta funcion';
+      }
+    }
+  },
+  async toggleFileStorage() {
+    if (!FileStorage.isSupported()) {
+      Toast.show('Tu navegador no soporta esta funcion', Icons.warning);
+      return;
+    }
+    if (FileStorage.active) {
+      const ok = await FileStorage.deactivate();
+      if (ok) {
+        Toast.show('Datos migrados a localStorage', Icons.check);
+        AudioEngine.success();
+      }
+    } else {
+      const ok = await FileStorage.activate();
+      if (ok) {
+        Toast.show('Datos migrados a carpeta del dispositivo', Icons.check);
+        AudioEngine.success();
+      }
+    }
+    this.updateFileStorageToggle();
+    Render.categories();
   }
 };
 
@@ -2325,10 +2608,11 @@ function hideSplash() {
   }
 }
 
-function init() {
+async function init() {
   cacheDOM();
   AudioEngine.loadSetting();
-  Storage.load();
+  await FileStorage.init();
+  await Storage.load();
   Attempts.load();
   PWA.setup();
   Render.categories();
