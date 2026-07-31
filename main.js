@@ -2,6 +2,11 @@
 'use strict';
 
 async function init() {
+  // Timeout de seguridad: si init() se bloquea, quitar splash igual
+  const splashTimeout = setTimeout(function() {
+    console.warn('init() timeout - forcing splash hide');
+    hideSplash();
+  }, 8000);
 
   cacheDOM();
 
@@ -278,6 +283,8 @@ async function init() {
       }
     });
   }
+
+  clearTimeout(splashTimeout);
 }
 
 window.App = {

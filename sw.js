@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mi-recetario-v5';
+const CACHE_NAME = 'mi-recetario-v6';
 const APP_FILES = [
   './',
   './index.html',
