@@ -711,7 +711,7 @@ function cacheDOM() {
     'cookIngredientsOverlay','cookIngredientsList',
     'attemptsSection','attemptsToggleBtn','attemptsContent','attemptsList',
     'attemptFormWrap','attemptPhotoInput','attemptPhotoPreview','attemptPhotoBtnText',
-    'attemptRatingStars','attemptNotesInput','attemptSaveBtn','attemptCancelBtn',
+    'attemptRatingStars','attemptRatingSelect','attemptNotesInput','attemptSaveBtn','attemptCancelBtn','updateBanner','updateBtn',
     'attemptsGlobalList','attemptFormTitle',
     'aboutStatRecipes','aboutStatCategories','aboutStatFavorites'
   ];
@@ -2520,6 +2520,7 @@ const Attempts = {
       var a = this._data.find(function(x) { return x.id === attemptId; });
       if (a) {
         this.setRating(a.rating || 0);
+        if (DOM.attemptRatingSelect) DOM.attemptRatingSelect.value = a.rating || 0;
         if (DOM.attemptNotesInput) DOM.attemptNotesInput.value = a.notes || '';
         if (a.photo) {
           this._currentPhotoBase64 = a.photo;
@@ -2553,18 +2554,13 @@ const Attempts = {
   },
 
   setRating(n) {
+    n = parseInt(n, 10) || 0;
+    if (DOM.attemptRatingSelect) DOM.attemptRatingSelect.value = n;
     if (!DOM.attemptRatingStars) return;
     DOM.attemptRatingStars.setAttribute('data-rating', n);
     var spans = DOM.attemptRatingStars.querySelectorAll('span');
     for (var i = 0; i < spans.length; i++) {
-      var val = i + 1;
-      if (val <= n) {
-        spans[i].classList.add('active');
-        spans[i].innerHTML = '&#9733;';
-      } else {
-        spans[i].classList.remove('active');
-        spans[i].innerHTML = '&#9734;';
-      }
+      spans[i].innerHTML = (i + 1) <= n ? '&#9733;' : '&#9734;';
     }
   },
 
@@ -2601,7 +2597,7 @@ const Attempts = {
 
   saveAttempt() {
     if (!this._currentRecipeId) return;
-    var rating = parseInt(DOM.attemptRatingStars ? DOM.attemptRatingStars.getAttribute('data-rating') : '0', 10) || 0;
+    var rating = parseInt(DOM.attemptRatingSelect ? DOM.attemptRatingSelect.value : '0', 10) || 0;
     var notes = DOM.attemptNotesInput ? DOM.attemptNotesInput.value.trim() : '';
 
     if (this._editingAttemptId) {
@@ -2988,17 +2984,39 @@ window.App = {
   install: function() { PWA.install(); }
 }
 
-  // Inicializar estrellas interactivas del formulario de intentos
-  if (DOM.attemptRatingStars) {
-    var starSpans = DOM.attemptRatingStars.querySelectorAll('span');
-    for (var i = 0; i < starSpans.length; i++) {
-      (function(idx) {
-        starSpans[idx].addEventListener('click', function() {
-          var val = parseInt(this.getAttribute('data-value'), 10);
-          App.attempts.setRating(val);
-        });
-      })(i);
-    }
+  // Listener del select de calificación en intentos
+  if (DOM.attemptRatingSelect) {
+    DOM.attemptRatingSelect.addEventListener('change', function() {
+      var val = parseInt(DOM.attemptRatingSelect.value, 10) || 0;
+      App.attempts.setRating(val);
+    });
+  }
+}
+
+  // Listener del select de calificación
+  if (DOM.attemptRatingSelect) {
+    DOM.attemptRatingSelect.addEventListener('change', function() {
+      App.attempts.setRating(DOM.attemptRatingSelect.value);
+    });
+  }
+
+  // Listener del botón de actualizar app
+  if (DOM.updateBtn) {
+    DOM.updateBtn.addEventListener('click', function() {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage('skipWaiting');
+        window.location.reload();
+      }
+    });
+  }
+
+  // Sistema de actualización de PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'UPDATE_AVAILABLE') {
+        if (DOM.updateBanner) DOM.updateBanner.style.display = 'flex';
+      }
+    });
   }
 }
 
