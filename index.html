@@ -608,23 +608,10 @@
   </div>
 
 </div><!-- /desktop-panel -->
-<script src="core.js"></script>
-  <script src="features.js"></script>
-  <script src="main.js"></script>
+<script src="app.js"></script>
   <div id="updateBanner" class="update-banner" style="display:none;">
     <span>🔄 Nueva versión disponible</span>
     <button id="updateBtn">Actualizar ahora</button>
   </div>
-<script>
-  // Fallback: si los scripts principales fallan, quitar splash despues de 10 segundos
-  setTimeout(function() {
-    var splash = document.getElementById('splash');
-    if (splash && splash.style.display !== 'none') {
-      console.warn('Fallback: hiding splash after timeout');
-      splash.style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-    }
-  }, 10000);
-</script>
 </body>
 </html>
