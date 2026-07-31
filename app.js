@@ -123,11 +123,15 @@ function parseLines(value) {
   return String(value ?? '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 }
 
+function parseLinesKeepEmpty(value) {
+  return String(value ?? '').split(/\r?\n/);
+}
+
 function getSteps(recipe) {
   if (!recipe) return [];
-  const texts = parseLines(recipe.pasos);
+  const texts = parseLinesKeepEmpty(recipe.pasos);
   const photos = Array.isArray(recipe.stepPhotos) ? recipe.stepPhotos : [];
-  return texts.map((text, i) => ({ text, photo: photos[i] || '' }));
+  return texts.map((text, i) => ({ text: text.trim(), photo: photos[i] || '' }));
 }
 
 function stepsToString(steps) {
@@ -368,7 +372,7 @@ const FileStorage = (() => {
 
   async function activate() {
     if (!isSupported()) {
-      Toast.show(isMobile() ? 'Solo disponible en escritorio (Windows/macOS/Linux)' : 'Requiere HTTPS o localhost para funcionar', Icons.warning);
+      Toast.show(isMobile() ? 'Solo disponible en computadoras de escritorio' : 'Requiere HTTPS o localhost para funcionar', Icons.warning);
       return false;
     }
     try {
@@ -625,11 +629,13 @@ const Storage = {
   save() {
     if (FileStorage.active) {
       FileStorage.save();
+      Settings.updateAboutStats();
       return;
     }
     try {
       localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
       localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
+      Settings.updateAboutStats();
     } catch (e) {
       console.error(e);
       App.toast.show('Error guardando. Espacio lleno?', Icons.warning);
@@ -646,7 +652,7 @@ const Storage = {
     if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
     if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
     if (typeof recipe.notaFinal !== 'string') recipe.notaFinal = '';
-    const stepCount = parseLines(recipe.pasos).length;
+    const stepCount = parseLinesKeepEmpty(recipe.pasos).length;
     while (recipe.stepPhotos.length < stepCount) recipe.stepPhotos.push('');
     if (recipe.stepPhotos.length > stepCount) recipe.stepPhotos.length = stepCount;
     recipe.timers = recipe.timers.map((t, i) => {
@@ -669,7 +675,7 @@ const Storage = {
   },
 
   ensureStepState(recipe) {
-    const steps = parseLines(recipe.pasos);
+    const steps = parseLinesKeepEmpty(recipe.pasos);
     if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
     while (recipe.stepDone.length < steps.length) recipe.stepDone.push(false);
     if (recipe.stepDone.length > steps.length) recipe.stepDone.length = steps.length;
@@ -706,7 +712,8 @@ function cacheDOM() {
     'attemptsSection','attemptsToggleBtn','attemptsContent','attemptsList',
     'attemptFormWrap','attemptPhotoInput','attemptPhotoPreview','attemptPhotoBtnText',
     'attemptRatingStars','attemptNotesInput','attemptSaveBtn','attemptCancelBtn',
-    'attemptsGlobalList','attemptFormTitle'
+    'attemptsGlobalList','attemptFormTitle',
+    'aboutStatRecipes','aboutStatCategories','aboutStatFavorites'
   ];
   ids.forEach(id => DOM[id] = byId(id));
 }
@@ -1344,7 +1351,7 @@ const Recipe = {
         text: textEl ? textEl.value.trim() : '',
         photo: photoEl ? photoEl.src : ''
       };
-    }).filter(function(s) { return s.text; });
+    });
   },
 
   addStep() {
@@ -2347,7 +2354,7 @@ const CookMode = (() => {
       const recipe = State.recipe;
       if (!recipe) return;
 
-      steps = parseLines(recipe.pasos);
+      steps = parseLinesKeepEmpty(recipe.pasos);
       currentStep = 0;
       quickTimerSeconds = 0;
       quickTimerRunning = false;
@@ -2421,6 +2428,7 @@ const Attempts = {
   save() {
     if (FileStorage.active) {
       FileStorage.save();
+      Settings.updateAboutStats();
       return;
     }
     try {
@@ -2730,12 +2738,9 @@ const Settings = {
     this.updateAboutStats();
   },
   updateAboutStats() {
-    const recipesEl = document.getElementById('aboutStatRecipes');
-    const catsEl = document.getElementById('aboutStatCategories');
-    const favsEl = document.getElementById('aboutStatFavorites');
-    if (recipesEl) recipesEl.textContent = State.recipes.length;
-    if (catsEl) catsEl.textContent = State.categories.length;
-    if (favsEl) favsEl.textContent = State.recipes.filter(r => r.favorito).length;
+    if (DOM.aboutStatRecipes) DOM.aboutStatRecipes.textContent = State.recipes.length;
+    if (DOM.aboutStatCategories) DOM.aboutStatCategories.textContent = State.categories.length;
+    if (DOM.aboutStatFavorites) DOM.aboutStatFavorites.textContent = State.recipes.filter(r => r.favorito).length;
   },
   updateSoundToggle() {
     if (DOM.soundToggle) DOM.soundToggle.classList.toggle('active', AudioEngine.enabled);
@@ -2756,13 +2761,13 @@ const Settings = {
       } else if (FileStorage.needsReauth) {
         DOM.fileStorageDesc.textContent = 'Toque para reactivar el acceso';
       } else {
-        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : (isMobile() ? 'Solo disponible en escritorio' : 'Requiere HTTPS o localhost');
+        DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Guarda datos en una carpeta de tu PC' : (isMobile() ? 'Solo para computadoras (Windows/macOS/Linux)' : 'Requiere HTTPS o localhost');
       }
     }
   },
   async toggleFileStorage() {
     if (!FileStorage.isSupported()) {
-      Toast.show(isMobile() ? 'Solo disponible en escritorio (Windows/macOS/Linux)' : 'Requiere HTTPS o localhost para funcionar', Icons.warning);
+      Toast.show(isMobile() ? 'Solo disponible en computadoras de escritorio' : 'Requiere HTTPS o localhost para funcionar', Icons.warning);
       return;
     }
     if (FileStorage.active) {
@@ -2832,6 +2837,7 @@ async function init() {
   }
   PWA.setup();
   Render.categories();
+  Settings.updateAboutStats();
 
   if (DOM.searchInput) {
     DOM.searchInput.addEventListener('input', function(e) { Search.debounced(e.target.value); });
