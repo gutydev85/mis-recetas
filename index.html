@@ -17,17 +17,6 @@
 </head>
 <body>
 
-<!-- ========== UPDATE BANNER ========== -->
-<div id="updateBanner" class="update-banner">
-  <div class="update-banner-content">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-    <span>Nueva versi&oacute;n disponible</span>
-  </div>
-  <button class="update-banner-btn" onclick="App.applyUpdate()">Actualizar</button>
-  <button class="update-banner-close" onclick="App.dismissUpdate()">&times;</button>
-</div>
-
-
 <!-- ========== SPLASH ========== -->
 <div id="splash" class="splash-screen">
   <div class="splash-content">
@@ -38,13 +27,6 @@
         <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
       </svg>
     </div>
-<script>
-  // Safety: hide splash after 4 seconds even if app.js fails
-  setTimeout(function(){
-    var s=document.getElementById('splash');
-    if(s){s.classList.add('hidden');setTimeout(function(){s.remove();},600);}
-  },4000);
-</script>
     <div class="splash-title">Mi Recetario</div>
     <div class="splash-subtitle">Tu cocina, tu ritmo</div>
     <div class="splash-loader"><div class="splash-loader-bar"></div></div>
@@ -621,25 +603,7 @@
     </main>
   </div>
 
-
-
-  <!-- Desktop right panel for attempts -->
-  <div class="desktop-right-panel" id="desktopRightPanel">
-    <div class="right-panel-header">
-      <h2 id="rightPanelTitle">Mis Intentos</h2>
-      <button class="header-btn" onclick="App.attempts.closeDesktopPanel()" aria-label="Cerrar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="right-panel-content" id="rightPanelContent"></div>
-</div>
 </div><!-- /desktop-panel -->
-
-  
-  
-
-  
-
 <script src="app.js"></script>
 </body>
 </html>

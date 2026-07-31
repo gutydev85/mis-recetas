@@ -259,7 +259,6 @@ const State = {
   categories: [],
   recipes: [],
   currentView: 'home',
-  updateBannerShown: false,
   currentRecipeId: null,
   listFilter: { type: null, id: null, query: null },
   previousViewBeforeDetail: null,
@@ -726,7 +725,7 @@ const Nav = {
     }
 
     if (isDesktop()) {
-      const panelViews = ['recipe-detail', 'recipe-form', 'category-form', 'settings', 'cook-mode'];
+      const panelViews = ['recipe-detail', 'recipe-form', 'category-form', 'settings', 'cook-mode', 'attempts'];
       panelViews.forEach(v => {
         const el = byId('view-' + v);
         if (el) el.classList.remove('active');
@@ -934,18 +933,7 @@ const Render = {
         App.recipe.showDetail(recipe.id);
       });
       const favBtn = row.querySelector('.fav-btn');
-      favBtn.addEventListener('click', function(e) { 
-              e.stopPropagation(); 
-              App.favorites.toggle(recipe.id); 
-              var updated = State.recipes.find(function(r) { return r.id === recipe.id; });
-              if (updated) {
-                this.classList.toggle('active', updated.favorito);
-                if (State.listFilter.type === 'favorites' && !updated.favorito) {
-                  var rowEl = this.closest('.recipe-row');
-                  if (rowEl) rowEl.remove();
-                }
-              }
-            });
+      favBtn.addEventListener('click', function(e) { e.stopPropagation(); App.favorites.toggle(recipe.id); });
       frag.appendChild(row);
     });
     DOM.recipeListContainer.innerHTML = '';
@@ -989,19 +977,8 @@ const Search = {
             row.className = 'recipe-row';
             row.style.animationDelay = (i * 60) + 'ms';
             row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
-              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>';
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'row-actions';
-            const favBtn = document.createElement('button');
-            favBtn.className = 'fav-btn ' + (recipe.favorito ? 'active' : '');
-            favBtn.setAttribute('data-id', recipe.id);
-            favBtn.innerHTML = ICONS.heart;
-            favBtn.addEventListener('click', function(e) { 
-              e.stopPropagation(); 
-              App.favorites.toggle(recipe.id); 
-            });
-            actionsDiv.appendChild(favBtn);
-            row.appendChild(actionsDiv);
+              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
+              '<div class="row-actions"><button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + ICONS.heart + '</button></div>';
             row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
             frag.appendChild(row);
           });
@@ -1052,19 +1029,8 @@ const Favorites = {
             row.className = 'recipe-row';
             row.style.animationDelay = (i * 60) + 'ms';
             row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
-              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>';
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'row-actions';
-            const favBtn = document.createElement('button');
-            favBtn.className = 'fav-btn ' + (recipe.favorito ? 'active' : '');
-            favBtn.setAttribute('data-id', recipe.id);
-            favBtn.innerHTML = ICONS.heart;
-            favBtn.addEventListener('click', function(e) { 
-              e.stopPropagation(); 
-              App.favorites.toggle(recipe.id); 
-            });
-            actionsDiv.appendChild(favBtn);
-            row.appendChild(actionsDiv);
+              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
+              '<button class="fav-btn active" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">&#10084;&#65039;</button>';
             row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
             frag.appendChild(row);
           });
@@ -1094,23 +1060,6 @@ const Favorites = {
       if (State.listFilter.type === 'favorites') Render.recipeList(State.recipes.filter(r => r.favorito));
       else if (State.listFilter.type === 'category') Render.recipeList(State.recipes.filter(r => r.categoriaId === State.listFilter.id));
       else if (State.listFilter.type === 'search') Search.handle(DOM.searchInput ? DOM.searchInput.value : '');
-    }
-    // Desktop: update all fav buttons for this recipe without full re-render
-    if (isDesktop()) {
-      $$('.fav-btn[data-id="' + id + '"]').forEach(function(btn) {
-        btn.classList.toggle('active', recipe.favorito);
-      });
-      // If in favorites view and unfavorited, remove the row
-      if (State.listFilter.type === 'favorites' && !recipe.favorito) {
-        $$('.recipe-row').forEach(function(row) {
-          var btn = row.querySelector('.fav-btn[data-id="' + id + '"]');
-          if (btn) row.remove();
-        });
-        var sidebarList = byId('sidebar-recipes-list');
-        if (sidebarList && sidebarList.querySelectorAll('.recipe-row').length === 0) {
-          sidebarList.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#10084;&#65039;</div><h3>Sin favoritos</h3><p>Marca recetas con &#10084;&#65039;</p></div>';
-        }
-      }
     }
     if (State.currentView === 'recipe-detail' && State.currentRecipeId === id) {
       if (DOM.detailFavBtn) DOM.detailFavBtn.classList.toggle('active', recipe.favorito);
@@ -1196,19 +1145,8 @@ const Recipe = {
             row.className = 'recipe-row';
             row.style.animationDelay = (i * 60) + 'ms';
             row.innerHTML = (recipe.fotoPath ? '<img class="recipe-thumb" src="' + recipe.fotoPath + '" alt="">' : '<div class="recipe-thumb-placeholder">&#127859;</div>') +
-              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>';
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'row-actions';
-            const favBtn = document.createElement('button');
-            favBtn.className = 'fav-btn ' + (recipe.favorito ? 'active' : '');
-            favBtn.setAttribute('data-id', recipe.id);
-            favBtn.innerHTML = ICONS.heart;
-            favBtn.addEventListener('click', function(e) { 
-              e.stopPropagation(); 
-              App.favorites.toggle(recipe.id); 
-            });
-            actionsDiv.appendChild(favBtn);
-            row.appendChild(actionsDiv);
+              '<div class="info"><div class="title">' + escapeHtml(recipe.nombre) + '</div><div class="meta">' + (c ? c.nombre : 'Sin categoria') + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div></div>' +
+              '<div class="row-actions"><button class="fav-btn ' + (recipe.favorito ? 'active' : '') + '" onclick="event.stopPropagation(); App.favorites.toggle(&#39;' + recipe.id + '&#39;)">' + ICONS.heart + '</button></div>';
             row.addEventListener('click', function() { App.recipe.showDetail(recipe.id); });
             frag.appendChild(row);
           });
@@ -2698,50 +2636,9 @@ const Attempts = {
     });
   },
 
-  showDesktop() {
-    const panel = byId('desktopRightPanel');
-    const content = byId('rightPanelContent');
-    const title = byId('rightPanelTitle');
-    if (!panel || !content) { Nav.set('attempts'); return; }
-    panel.classList.add('active');
-    if (title) title.textContent = 'Mis Intentos';
-    this.renderGlobalDesktop(content);
-  },
-
-  closeDesktopPanel() {
-    const panel = byId('desktopRightPanel');
-    if (panel) panel.classList.remove('active');
-  },
-
-  renderGlobalDesktop(container) {
-    var list = this._data;
-    if (list.length === 0) {
-      container.innerHTML = '<div class="empty-state" style="padding:30px 10px;"><div class="big-icon">&#127860;</div><h3>Sin intentos</h3><p>Añade tu primer intento</p></div>';
-      return;
-    }
-    container.innerHTML = list.map(function(a) {
-      var recipe = State.recipes.find(function(r) { return r.id === a.recipeId; });
-      var recipeName = recipe ? recipe.nombre : 'Receta eliminada';
-      var photoHtml = a.photo ? '<img src="' + a.photo + '" class="attempt-card-photo" alt="">' : '';
-      return '<div class="attempt-card">' +
-        '<div class="attempt-card-header">' +
-          '<div class="attempt-card-date">' + new Date(a.date).toLocaleDateString('es-ES', {year:'numeric', month:'short', day:'numeric'}) + '</div>' +
-          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + escapeHtml(recipeName) + '</div>' +
-          '<div class="attempt-card-stars">' + App.attempts.renderStars(a.rating || 0, false) + '</div>' +
-        '</div>' +
-        photoHtml +
-        '<div class="attempt-card-notes">' + escapeHtml(a.notes || '') + '</div>' +
-      '</div>';
-    }).join('');
-  },
-
   showGlobal() {
     this.load();
     var all = this.getAll();
-    if (isDesktop()) {
-      this.showDesktop();
-      return;
-    }
     Nav.set('attempts');
     if (!DOM.attemptsGlobalList) return;
     if (all.length === 0) {
@@ -2928,15 +2825,14 @@ const PWA = {
 };
 
 function hideSplash() {
-  var splash = document.getElementById('splash');
-  if (splash && !splash.classList.contains('hidden')) {
+  const splash = DOM.splash;
+  if (splash) {
     splash.classList.add('hidden');
     setTimeout(function() { splash.remove(); }, 700);
   }
 }
 
 async function init() {
-  try {
   cacheDOM();
   AudioEngine.loadSetting();
   await FileStorage.init();
@@ -2958,7 +2854,7 @@ async function init() {
       if (DOM.modalOverlay && DOM.modalOverlay.classList.contains('active')) Modal.close();
       else if (State.currentView === 'cook-mode') CookMode.exit();
       else if (State.currentView === 'attempts') Nav.home();
-      else if (State.currentView !== 'home') Nav.home();
+    else if (State.currentView !== 'home') Nav.home();
     }
   });
 
@@ -3018,13 +2914,6 @@ async function init() {
     document.body.classList.add('update-banner-visible');
   }
 
-  function dismissUpdate() {
-    const banner = document.getElementById('updateBanner');
-    if (banner) banner.classList.remove('visible');
-    document.body.classList.remove('update-banner-visible');
-    State.updateBannerShown = false;
-  }
-
   function applyUpdate() {
     const banner = document.getElementById('updateBanner');
     if (banner) banner.classList.remove('visible');
@@ -3032,20 +2921,9 @@ async function init() {
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage('skipWaiting');
       // Wait for the new SW to activate, then reload
-      var reloaded = false;
       navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (!reloaded) {
-          reloaded = true;
-          window.location.reload();
-        }
+        window.location.reload();
       });
-      // Fallback: reload after 3 seconds if controllerchange doesn't fire
-      setTimeout(function() {
-        if (!reloaded) {
-          reloaded = true;
-          window.location.reload();
-        }
-      }, 3000);
     } else {
       window.location.reload();
     }
@@ -3084,12 +2962,6 @@ async function init() {
       if (homeView) homeView.classList.add('active');
     }
   }, 200));
-
-  } catch (e) {
-    console.error('Init error:', e);
-  } finally {
-    hideSplash();
-  }
 }
 
 window.App = {
@@ -3108,9 +2980,7 @@ window.App = {
   toast: Toast,
   modal: Modal,
   audio: { toggle: function() { Settings.toggleSound(); } },
-  install: function() { PWA.install(); },
-  applyUpdate: applyUpdate,
-  dismissUpdate: dismissUpdate
+  install: function() { PWA.install(); }
 };
 
 document.addEventListener('DOMContentLoaded', init);
