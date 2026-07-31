@@ -2740,9 +2740,7 @@ html, body {
 
 /* En movil: los wrappers no afectan el layout */
 .desktop-sidebar,
-.desktop-panel {
-  display: contents;
-}
+
 
 /* Placeholder del panel derecho (solo desktop) */
 .desktop-placeholder {
@@ -2763,13 +2761,13 @@ html, body {
     max-width: 1200px;
     margin: 0 auto;
     height: 100vh;
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    grid-template-rows: 1fr;
+    display: flex;
+    flex-direction: row;
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
     box-shadow: 0 0 80px rgba(0,0,0,0.5);
     overflow: hidden;
+      flex-direction: row;
   }
 
   /* Sidebar izquierdo */
@@ -2837,6 +2835,7 @@ html, body {
     overflow: hidden;
     position: relative;
     background: var(--bg);
+      min-width: 0;
   }
 
   /* Placeholder cuando no hay nada seleccionado */
@@ -2968,8 +2967,8 @@ html, body {
 /* Pantallas muy grandes */
 @media (min-width: 1200px) {
   #app {
-    grid-template-columns: 420px 1fr;
     max-width: 1400px;
+    margin: 0 auto;
   }
   #view-recipe-detail .detail-photo {
     height: 340px;

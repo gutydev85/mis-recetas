@@ -259,6 +259,7 @@ const State = {
   categories: [],
   recipes: [],
   currentView: 'home',
+  updateBannerShown: false,
   currentRecipeId: null,
   listFilter: { type: null, id: null, query: null },
   previousViewBeforeDetail: null,
