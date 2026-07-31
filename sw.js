@@ -16,13 +16,12 @@ self.addEventListener('install', e => {
       return Promise.all(
         FILES_TO_CACHE.map(url =>
           cache.add(url).catch(err => {
-            console.warn('Failed to cache', url, err);
+            console.warn('SW: failed to cache', url, err);
           })
         )
       );
-    })
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -34,12 +33,28 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Skip non-GET requests
+  if (e.request.method !== 'GET') return;
+
   e.respondWith(
     caches.match(e.request).then(response => {
       if (response) return response;
-      return fetch(e.request).catch(() => {
+      return fetch(e.request).then(networkResponse => {
+        // Cache successful GET requests for static assets
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(e.request, clone);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
         if (e.request.mode === 'navigate') {
           return caches.match('./index.html');
+        }
+        // Return a simple offline fallback for images
+        if (e.request.destination === 'image') {
+          return new Response('', { status: 204 });
         }
       });
     })

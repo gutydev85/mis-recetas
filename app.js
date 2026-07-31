@@ -222,10 +222,16 @@ const AudioEngine = (() => {
   }
 
   function loadSetting() {
-    try { enabled = localStorage.getItem(CONFIG.STORAGE_KEYS.sound) !== 'false'; } catch (e) {}
+    try {
+      const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.sound);
+      if (saved !== null) enabled = saved !== 'false';
+    } catch (e) {}
   }
   function saveSetting() {
-    try { localStorage.setItem(CONFIG.STORAGE_KEYS.sound, enabled); } catch (e) {}
+    try {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.sound, enabled);
+      if (FileStorage.active) FileStorage.save();
+    } catch (e) {}
   }
 
   return {
@@ -268,6 +274,7 @@ const State = {
 const FileStorage = (() => {
   let active = false;
   let dirHandle = null;
+  let permissionState = null; // 'granted', 'prompt', 'denied', or null
   const DB_NAME = 'mr_fs_db';
   const STORE_NAME = 'handles';
   const KEY = 'dirHandle';
@@ -333,21 +340,29 @@ const FileStorage = (() => {
         return;
       }
       const perm = await handle.queryPermission({ mode: 'readwrite' });
+      permissionState = perm;
       if (perm === 'granted') {
         dirHandle = handle;
         active = true;
         await load();
-      } else {
-        // Permission is prompt or denied — do NOT auto-request (requires user gesture)
-        // Keep dirHandle in memory so we can request later, but stay inactive
+      } else if (perm === 'prompt') {
         dirHandle = handle;
         active = false;
-        console.log('FileStorage: permission not granted, falling back to localStorage');
+        console.log('FileStorage: permission prompt, waiting for user gesture');
+      } else {
+        // perm === 'denied' or unknown
+        dirHandle = null;
+        active = false;
+        permissionState = 'denied';
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+        await removeHandle();
+        console.log('FileStorage: permission denied, reset to localStorage');
       }
     } catch (e) {
       console.error('FileStorage init error', e);
       active = false;
       dirHandle = null;
+      permissionState = null;
     }
   }
 
@@ -358,13 +373,10 @@ const FileStorage = (() => {
     }
     try {
       const handle = await window.showDirectoryPicker();
-      // Test write first
       dirHandle = handle;
       await writeFile('.mr_test', { ok: true });
       await dirHandle.removeEntry('.mr_test');
-      // Migrate data
       await migrateToFolder();
-      // Verify migration
       const cats = await readFile('categories.json');
       const recs = await readFile('recipes.json');
       if (!cats && !recs && (State.categories.length > 0 || State.recipes.length > 0)) {
@@ -372,15 +384,14 @@ const FileStorage = (() => {
         Toast.show('Error al escribir en la carpeta', Icons.error);
         return false;
       }
-      // All good — commit
       await saveHandle(handle);
       localStorage.setItem(CONFIG.STORAGE_KEYS.useFileStorage, 'true');
       active = true;
-      // NOTE: we intentionally do NOT clear localStorage — it serves as backup
-      // if folder permission is later revoked.
+      permissionState = 'granted';
       return true;
     } catch (e) {
       dirHandle = null;
+      permissionState = null;
       if (e.name !== 'AbortError') {
         console.error('activate error', e);
         Toast.show('Error al acceder a la carpeta', Icons.error);
@@ -393,6 +404,7 @@ const FileStorage = (() => {
     if (!dirHandle) return false;
     try {
       const perm = await dirHandle.requestPermission({ mode: 'readwrite' });
+      permissionState = perm;
       if (perm === 'granted') {
         active = true;
         await load();
@@ -412,17 +424,34 @@ const FileStorage = (() => {
   async function deactivate() {
     if (!active && !dirHandle) return false;
     try {
-      // Migrate from folder back to localStorage
-      await migrateToLocal();
-      // Clean up folder files
-      await clearFolder();
+      // Only migrate from folder if we actually have access
+      if (active && dirHandle) {
+        await migrateToLocal();
+      }
+      // Always ensure localStorage has current memory state as ultimate fallback
+      localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
+      localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
+      localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(Attempts._data));
+      localStorage.setItem(CONFIG.STORAGE_KEYS.sound, AudioEngine.enabled);
+      if (active && dirHandle) {
+        await clearFolder();
+      }
       await removeHandle();
       localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
       dirHandle = null;
       active = false;
+      permissionState = null;
       return true;
     } catch (e) {
       console.error('deactivate error', e);
+      // Even on error, ensure we don't leave the app in a broken state
+      localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
+      localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
+      localStorage.setItem(CONFIG.STORAGE_KEYS.attempts, JSON.stringify(Attempts._data));
+      localStorage.removeItem(CONFIG.STORAGE_KEYS.useFileStorage);
+      dirHandle = null;
+      active = false;
+      permissionState = null;
       Toast.show('Error al migrar datos', Icons.error);
       return false;
     }
@@ -482,7 +511,7 @@ const FileStorage = (() => {
 
   async function clearFolder() {
     if (!dirHandle) return;
-    const files = ['categories.json', 'recipes.json', 'attempts.json', 'settings.json'];
+    const files = ['categories.json', 'recipes.json', 'attempts.json', 'settings.json', '.mr_test'];
     for (const f of files) {
       try { await dirHandle.removeEntry(f); } catch (e) {}
     }
@@ -500,8 +529,8 @@ const FileStorage = (() => {
       });
     } catch (e) {
       console.error('FileStorage.save error', e);
-      // If save fails, deactivate gracefully and fall back to localStorage
       active = false;
+      permissionState = null;
       Toast.show('Error guardando en carpeta. Usando localStorage.', Icons.warning);
     }
   }
@@ -529,17 +558,47 @@ const FileStorage = (() => {
     }
   }
 
+  async function writeMedia(name, blob) {
+    if (!dirHandle) throw new Error('No dirHandle');
+    const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  }
+
+  async function readMedia(name) {
+    if (!dirHandle) return null;
+    try {
+      const fileHandle = await dirHandle.getFileHandle(name);
+      const file = await fileHandle.getFile();
+      return URL.createObjectURL(file);
+    } catch (e) {
+      if (e.name === 'NotFoundError' || e.name === 'TypeError') return null;
+      console.error('readMedia error', e);
+      return null;
+    }
+  }
+
+  async function deleteMedia(name) {
+    if (!dirHandle) return;
+    try { await dirHandle.removeEntry(name); } catch (e) {}
+  }
+
   return {
     get active() { return active; },
     get dirName() { return dirHandle ? dirHandle.name : ''; },
-    get needsReauth() { return !!dirHandle && !active; },
+    get needsReauth() { return !!dirHandle && !active && permissionState === 'prompt'; },
+    get permissionState() { return permissionState; },
     isSupported,
     init,
     activate,
     deactivate,
     reauthorize,
     save,
-    load
+    load,
+    writeMedia,
+    readMedia,
+    deleteMedia
   };
 })();
 
@@ -853,7 +912,8 @@ const Render = {
       const catName = cat ? cat.nombre : 'Sin categoria';
       const row = document.createElement('div');
       row.className = 'recipe-row';
-      row.style.animationDelay = (i * 60) + 'ms';row.innerHTML = (recipe.fotoPath ? '<img src="' + recipe.fotoPath + '" class="recipe-thumb" alt="">' : '<div class="recipe-thumb-placeholder">' + ICONS.chef + '</div>') +
+      row.style.animationDelay = (i * 60) + 'ms';var isVideo = recipe.mediaType === 'video' || (recipe.fotoPath && recipe.fotoPath.match(/^fs:.*\.(mp4|webm|ogg|mov)$/i));
+      row.innerHTML = (recipe.fotoPath ? (isVideo ? '<div class="recipe-thumb-placeholder" style="position:relative"><span style="font-size:20px">▶</span></div>' : '<img src="' + recipe.fotoPath + '" class="recipe-thumb" alt="">') : '<div class="recipe-thumb-placeholder">' + ICONS.chef + '</div>') +
         '<div class="info">' +
         '<div class="title">' + escapeHtml(recipe.nombre) + '</div>' +
         '<div class="meta">' + ICONS.clock + ' ' + catName + ' &middot; ' + (recipe.tiempoMinutos || 0) + ' min</div>' +
@@ -1104,7 +1164,26 @@ const Recipe = {
     Storage.ensureStepState(recipe);
 
     DOM.detailTitle.textContent = recipe.nombre;
-    DOM.detailRecipeName.textContent = recipe.nombre;DOM.detailPhotoWrap.innerHTML = recipe.fotoPath? '<img src="' + recipe.fotoPath + '" class="detail-photo" alt="">' : '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
+    DOM.detailRecipeName.textContent = recipe.nombre;if (recipe.fotoPath) {
+      if (recipe.mediaType === 'video' || (recipe.fotoPath.startsWith('fs:') && recipe.fotoPath.match(/\.(mp4|webm|ogg|mov)$/i))) {
+        var videoSrc = recipe.fotoPath;
+        if (videoSrc.startsWith('fs:') && FileStorage.active) {
+          FileStorage.readMedia(videoSrc.replace('fs:', '')).then(function(url) {
+            if (url && DOM.detailPhotoWrap) {
+              DOM.detailPhotoWrap.innerHTML = '<video src="' + url + '" class="detail-photo" controls playsinline style="background:#000"></video>';
+            }
+          }).catch(function() {
+            DOM.detailPhotoWrap.innerHTML = '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
+          });
+        } else {
+          DOM.detailPhotoWrap.innerHTML = '<video src="' + videoSrc + '" class="detail-photo" controls playsinline style="background:#000"></video>';
+        }
+      } else {
+        DOM.detailPhotoWrap.innerHTML = '<img src="' + recipe.fotoPath + '" class="detail-photo" alt="">';
+      }
+    } else {
+      DOM.detailPhotoWrap.innerHTML = '<div class="detail-photo-placeholder">' + ICONS.chef + '</div>';
+    }
     this._renderPortionUI(recipe);
     this.renderSteps(recipe);
     App.timer.renderDetailTimers(recipe);
@@ -1197,10 +1276,16 @@ const Recipe = {
         App.timer.buildEditor(recipe.timers || []);
         this.buildStepsEditor(getSteps(recipe));
         if (recipe.fotoPath) {
-          DOM.photoPreview.src = recipe.fotoPath;
-          DOM.photoPreview.classList.add('visible');
           State.currentPhotoBase64 = recipe.fotoPath;
-          DOM.photoBtnText.textContent = 'Cambiar foto';
+          State.currentMediaType = recipe.mediaType || 'image';
+          if (recipe.mediaType === 'video' || (recipe.fotoPath.startsWith('fs:') && recipe.fotoPath.match(/\.(mp4|webm|ogg|mov)$/i))) {
+            DOM.photoPreview.classList.remove('visible');
+            DOM.photoBtnText.textContent = 'Cambiar video';
+          } else {
+            DOM.photoPreview.src = recipe.fotoPath;
+            DOM.photoPreview.classList.add('visible');
+            DOM.photoBtnText.textContent = 'Cambiar foto';
+          }
         }
       }
     } else {
@@ -1351,6 +1436,7 @@ const Recipe = {
         recipe.stepPhotos = stepPhotos;
         recipe.tiempoMinutos = tiempo;
         recipe.fotoPath = State.currentPhotoBase64 || recipe.fotoPath || '';
+        recipe.mediaType = State.currentMediaType || recipe.mediaType || 'image';
         recipe.notaFinal = notaFinal;
         recipe.timers = timers;
         recipe.porciones = Math.max(1, porciones);
@@ -1366,6 +1452,7 @@ const Recipe = {
         tiempoMinutos: tiempo,
         favorito: false,
         fotoPath: State.currentPhotoBase64,
+        mediaType: State.currentMediaType || 'image',
         notaFinal: notaFinal,
         porciones: Math.max(1, porciones),
         ajustePorciones: ajustePorciones,
@@ -1386,6 +1473,10 @@ const Recipe = {
     const recipe = State.recipes.find(r => r.id === id);
     if (!recipe) return;
     Modal.show('Eliminar receta', 'Eliminar "' + escapeHtml(recipe.nombre) + '"? Esta accion no se puede deshacer.', function() {
+      // Delete media files if using FileStorage
+      if (FileStorage.active && recipe.fotoPath && recipe.fotoPath.startsWith('fs:')) {
+        FileStorage.deleteMedia(recipe.fotoPath.replace('fs:', ''));
+      }
       State.recipes = State.recipes.filter(function(r) { return r.id !== id; });
       Storage.save();
       if (State.currentView === 'recipe-detail') Nav.backFromDetail();
@@ -1450,11 +1541,52 @@ const Photo = {
   handle(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > CONFIG.MAX_PHOTO_MB * 1024 * 1024) {
-      Toast.show('La foto es muy grande. Max: 5MB', Icons.warning);
+    const isVideo = file.type.startsWith('video/');
+    const maxSize = isVideo ? CONFIG.MAX_VIDEO_MB : CONFIG.MAX_PHOTO_MB;
+    if (file.size > maxSize * 1024 * 1024) {
+      Toast.show(isVideo ? 'El video es muy grande. Max: ' + CONFIG.MAX_VIDEO_MB + 'MB' : 'La foto es muy grande. Max: 5MB', Icons.warning);
       input.value = '';
       return;
     }
+
+    if (isVideo) {
+      if (FileStorage.active) {
+        // Save video as file in folder
+        const mediaName = 'media-' + Date.now() + '.' + (file.name.split('.').pop() || 'mp4');
+        FileStorage.writeMedia(mediaName, file).then(function() {
+          State.currentPhotoBase64 = 'fs:' + mediaName;
+          State.currentMediaType = 'video';
+          DOM.photoPreview.src = '';
+          DOM.photoPreview.classList.remove('visible');
+          DOM.photoBtnText.textContent = 'Cambiar video';
+          Toast.show('Video guardado en carpeta', Icons.check);
+        }).catch(function(e) {
+          console.error(e);
+          Toast.show('Error al guardar video', Icons.error);
+          DOM.photoBtnText.textContent = 'Anadir foto o video';
+        });
+      } else {
+        // Video in localStorage mode - convert to base64
+        DOM.photoBtnText.textContent = 'Procesando...';
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          State.currentPhotoBase64 = e.target.result;
+          State.currentMediaType = 'video';
+          DOM.photoPreview.src = '';
+          DOM.photoPreview.classList.remove('visible');
+          DOM.photoBtnText.textContent = 'Cambiar video';
+        };
+        reader.onerror = function() {
+          Toast.show('Error al cargar el video', Icons.error);
+          DOM.photoBtnText.textContent = 'Anadir foto o video';
+        };
+        reader.readAsDataURL(file);
+      }
+      input.value = '';
+      return;
+    }
+
+    // Image handling (existing logic)
     DOM.photoBtnText.textContent = 'Comprimiendo...';
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -1467,11 +1599,12 @@ const Photo = {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         State.currentPhotoBase64 = canvas.toDataURL('image/jpeg', CONFIG.PHOTO_QUALITY);
+        State.currentMediaType = 'image';
         DOM.photoPreview.src = State.currentPhotoBase64;
         DOM.photoPreview.classList.add('visible');
         DOM.photoBtnText.textContent = 'Cambiar foto';
       };
-      img.onerror = function() { DOM.photoBtnText.textContent = 'Anadir foto'; Toast.show('Error al cargar la imagen', Icons.error); };
+      img.onerror = function() { DOM.photoBtnText.textContent = 'Anadir foto o video'; Toast.show('Error al cargar la imagen', Icons.error); };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
@@ -1599,11 +1732,19 @@ const Timer = {
   },
 
   saveMainState() {
-    if (State.mainTimer.running && State.currentRecipeId) {
-      localStorage.setItem(CONFIG.STORAGE_KEYS.timer, JSON.stringify({ endAt: State.mainTimer.endAt, recipeId: State.currentRecipeId }));
-    } else {
-      localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
+    const data = State.mainTimer.running && State.currentRecipeId
+      ? JSON.stringify({ endAt: State.mainTimer.endAt, recipeId: State.currentRecipeId })
+      : null;
+    if (FileStorage.active) {
+      // Timer state is saved as part of settings.json via FileStorage.save()
+      // We keep localStorage as fallback backup
+      if (data) localStorage.setItem(CONFIG.STORAGE_KEYS.timer, data);
+      else localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
+      FileStorage.save();
+      return;
     }
+    if (data) localStorage.setItem(CONFIG.STORAGE_KEYS.timer, data);
+    else localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
   },
 
   restoreMain() {
@@ -1622,6 +1763,7 @@ const Timer = {
       } else {
         State.mainTimer.seconds = 0;
         localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
+        if (FileStorage.active) FileStorage.save();
         this.updateMainDisplay();
       }
     } catch (e) {}
@@ -1631,6 +1773,7 @@ const Timer = {
     if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]);
     Toast.show('¡Tiempo finalizado!', Icons.alarm);
     AudioEngine.timerDone();
+    if (FileStorage.active) FileStorage.save();
   },
 
   renderDetailTimers(recipe) {
@@ -2555,6 +2698,14 @@ const DataIO = {
 
   confirmClear() {
     Modal.show('Borrar todo', 'Esto eliminara TODAS las recetas y categorias. No se puede deshacer.', function() {
+      // Delete all media files if using FileStorage
+      if (FileStorage.active) {
+        State.recipes.forEach(function(r) {
+          if (r.fotoPath && r.fotoPath.startsWith('fs:')) {
+            FileStorage.deleteMedia(r.fotoPath.replace('fs:', ''));
+          }
+        });
+      }
       State.categories = [];
       State.recipes = [];
       Attempts._data = [];
@@ -2602,6 +2753,8 @@ const Settings = {
     if (DOM.fileStorageDesc) {
       if (FileStorage.active) {
         DOM.fileStorageDesc.textContent = 'Carpeta: ' + (FileStorage.dirName || 'Dispositivo');
+      } else if (FileStorage.needsReauth) {
+        DOM.fileStorageDesc.textContent = 'Toque para reactivar el acceso';
       } else {
         DOM.fileStorageDesc.textContent = FileStorage.isSupported() ? 'Usar carpeta del dispositivo' : (isMobile() ? 'Solo disponible en escritorio' : 'Requiere HTTPS o localhost');
       }
@@ -2703,6 +2856,7 @@ async function init() {
         State.mainTimer.running = false;
         State.mainTimer.endAt = 0;
         localStorage.removeItem(CONFIG.STORAGE_KEYS.timer);
+        if (FileStorage.active) FileStorage.save();
         if (DOM.mainTimerBox) DOM.mainTimerBox.classList.remove('running');
         Timer.finishMain();
       }
