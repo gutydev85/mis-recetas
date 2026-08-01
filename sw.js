@@ -35,10 +35,15 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+
   const isAppFile = APP_FILES.some(f => {
     const path = f.replace('./', '/');
     return url.pathname === path || (f === './' && url.pathname === '/');
   });
+
+  const isImage = e.request.destination === 'image' ||
+                  /\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname);
+
   if (isAppFile) {
     e.respondWith(
       fetch(e.request).then(networkResponse => {
@@ -55,22 +60,35 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  e.respondWith(
-    caches.match(e.request).then(response => {
-      if (response) return response;
-      return fetch(e.request).then(networkResponse => {
-        if (networkResponse && networkResponse.status === 200) {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
-        return networkResponse;
-      }).catch(() => {
-        if (e.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-        if (e.request.destination === 'image') {
+
+  if (isImage) {
+    e.respondWith(
+      caches.match(e.request).then(response => {
+        if (response) return response;
+        return fetch(e.request).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return networkResponse;
+        }).catch(() => {
           return new Response('', { status: 204 });
-        }
+        });
+      })
+    );
+    return;
+  }
+
+  e.respondWith(
+    fetch(e.request).then(networkResponse => {
+      if (networkResponse && networkResponse.status === 200) {
+        const clone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+      }
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(e.request).then(cached => {
+        return cached || new Response('Offline', { status: 503 });
       });
     })
   );

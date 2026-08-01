@@ -2346,7 +2346,7 @@ const CookMode = (() => {
         e.preventDefault();
         speakCurrentStep();
       }
-      else if (e.key === 'Escape') {
+        else if (e.key === 'Escape') {
         e.preventDefault();
         exit();
       }
@@ -2963,40 +2963,12 @@ async function init() {
       if (homeView) homeView.classList.add('active');
     }
   }, 200));
-}
-
-window.App = {
-  nav: Nav,
-  render: Render,
-  search: Search,
-  favorites: Favorites,
-  category: Category,
-  recipe: Recipe,
-  attempts: Attempts,
-  photo: Photo,
-  timer: Timer,
-  cookMode: CookMode,
-  data: DataIO,
-  settings: Settings,
-  toast: Toast,
-  modal: Modal,
-  audio: { toggle: function() { Settings.toggleSound(); } },
-  install: function() { PWA.install(); }
-}
 
   // Listener del select de calificación en intentos
   if (DOM.attemptRatingSelect) {
     DOM.attemptRatingSelect.addEventListener('change', function() {
       var val = parseInt(DOM.attemptRatingSelect.value, 10) || 0;
       App.attempts.setRating(val);
-    });
-  }
-}
-
-  // Listener del select de calificación
-  if (DOM.attemptRatingSelect) {
-    DOM.attemptRatingSelect.addEventListener('change', function() {
-      App.attempts.setRating(DOM.attemptRatingSelect.value);
     });
   }
 
@@ -3018,6 +2990,27 @@ window.App = {
       }
     });
   }
+
 }
+
+window.App = {
+  nav: Nav,
+  render: Render,
+  search: Search,
+  favorites: Favorites,
+  category: Category,
+  recipe: Recipe,
+  attempts: Attempts,
+  photo: Photo,
+  timer: Timer,
+  cookMode: CookMode,
+  data: DataIO,
+  settings: Settings,
+  toast: Toast,
+  modal: Modal,
+  audio: { toggle: function() { Settings.toggleSound(); } },
+  install: function() { PWA.install(); }
+}
+
 
 document.addEventListener('DOMContentLoaded', init);
