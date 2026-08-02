@@ -759,14 +759,14 @@ const StorageV2 = (() => {
       for (const r of State.recipes) {
         if (r.fotoPath && r.fotoPath.startsWith('idb:')) {
           const photo = await get('photos', r.id);
-          if (photo && photo.blob) r.fotoPath = await blobToBase64(photo.blob);
+          if (photo && photo.blob) r.fotoPath = URL.createObjectURL(photo.blob);
         }
         if (Array.isArray(r.stepPhotos)) {
           for (let i = 0; i < r.stepPhotos.length; i++) {
             const sp = r.stepPhotos[i];
             if (sp && sp.startsWith('idb:')) {
               const photo = await get('photos', sp.replace('idb:', ''));
-              if (photo && photo.blob) r.stepPhotos[i] = await blobToBase64(photo.blob);
+              if (photo && photo.blob) r.stepPhotos[i] = URL.createObjectURL(photo.blob);
             }
           }
         }
@@ -796,6 +796,8 @@ const StorageV2 = (() => {
           const blob = base64ToBlob(recipeToSave.fotoPath, getMimeFromBase64(recipeToSave.fotoPath));
           await put('photos', { recipeId: r.id, blob: blob, mime: getMimeFromBase64(recipeToSave.fotoPath) });
           recipeToSave.fotoPath = 'idb:' + r.id;
+        } else if (recipeToSave.fotoPath && recipeToSave.fotoPath.startsWith('blob:')) {
+          recipeToSave.fotoPath = 'idb:' + r.id;
         }
         if (Array.isArray(recipeToSave.stepPhotos)) {
           const markers = [];
@@ -805,6 +807,9 @@ const StorageV2 = (() => {
               const key = r.id + '_step_' + i;
               const blob = base64ToBlob(sp, getMimeFromBase64(sp));
               await put('photos', { recipeId: key, blob: blob, mime: getMimeFromBase64(sp) });
+              markers.push('idb:' + key);
+            } else if (sp && sp.startsWith('blob:')) {
+              const key = r.id + '_step_' + i;
               markers.push('idb:' + key);
             } else markers.push(sp);
           }
@@ -924,6 +929,9 @@ const StorageV2 = (() => {
               const key = r.id + '_step_' + i;
               const blob = base64ToBlob(sp, getMimeFromBase64(sp));
               await put('photos', { recipeId: key, blob: blob, mime: getMimeFromBase64(sp) });
+              markers.push('idb:' + key);
+            } else if (sp && sp.startsWith('blob:')) {
+              const key = r.id + '_step_' + i;
               markers.push('idb:' + key);
             } else markers.push(sp);
           }
