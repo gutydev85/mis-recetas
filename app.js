@@ -606,87 +606,340 @@ const FileStorage = (() => {
   };
 })();
 
-const Storage = {
-  async load() {
-    if (FileStorage.active) {
-      await FileStorage.load();
-      this.normalizeAll();
-      return;
-    }
+const StorageV2 = (() => {
+  const DB_NAME = 'mr_db_v2';
+  const DB_VERSION = 1;
+  let _db = null;
+  let _migrated = false;
+
+  function openDB() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('recipes')) db.createObjectStore('recipes', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('categories')) db.createObjectStore('categories', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'recipeId' });
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('attempts')) db.createObjectStore('attempts', { keyPath: 'recipeId' });
+      };
+      req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function put(storeName, data) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).put(data);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function getAll(storeName) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function get(storeName, key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function del(storeName, key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function clearStore(storeName) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  function base64ToBlob(base64, mime) {
+    mime = mime || 'image/jpeg';
+    const byteString = atob(base64.split(',')[1] || base64);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    return new Blob([ab], { type: mime });
+  }
+
+  async function blobToBase64(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function getMimeFromBase64(b64) {
+    const m = b64.match(/^data:([^;]+);base64,/);
+    return m ? m[1] : 'image/jpeg';
+  }
+
+  async function migrateFromLocalStorage() {
+    if (_migrated) return;
     try {
       const cats = localStorage.getItem(CONFIG.STORAGE_KEYS.categories);
       const recs = localStorage.getItem(CONFIG.STORAGE_KEYS.recipes);
-      if (cats) State.categories = JSON.parse(cats);
-      if (recs) State.recipes = JSON.parse(recs);
+      const atts = localStorage.getItem(CONFIG.STORAGE_KEYS.attempts);
+      const sound = localStorage.getItem(CONFIG.STORAGE_KEYS.sound);
+      const timer = localStorage.getItem(CONFIG.STORAGE_KEYS.timer);
+
+      if (cats) {
+        const arr = JSON.parse(cats);
+        for (const c of arr) await put('categories', c);
+      }
+      if (recs) {
+        const arr = JSON.parse(recs);
+        for (const r of arr) {
+          if (r.fotoPath && r.fotoPath.startsWith('data:')) {
+            const blob = base64ToBlob(r.fotoPath, getMimeFromBase64(r.fotoPath));
+            await put('photos', { recipeId: r.id, blob: blob, mime: getMimeFromBase64(r.fotoPath) });
+            r.fotoPath = 'idb:' + r.id;
+          }
+          if (Array.isArray(r.stepPhotos)) {
+            for (let i = 0; i < r.stepPhotos.length; i++) {
+              const sp = r.stepPhotos[i];
+              if (sp && sp.startsWith('data:')) {
+                const key = r.id + '_step_' + i;
+                const blob = base64ToBlob(sp, getMimeFromBase64(sp));
+                await put('photos', { recipeId: key, blob: blob, mime: getMimeFromBase64(sp) });
+                r.stepPhotos[i] = 'idb:' + key;
+              }
+            }
+          }
+          await put('recipes', r);
+        }
+      }
+      if (atts) await put('settings', { key: 'attempts', value: JSON.parse(atts) });
+      if (sound !== null) await put('settings', { key: 'sound', value: sound === 'true' || sound === true });
+      if (timer) await put('settings', { key: 'timer', value: timer });
+
+      localStorage.setItem('mr_v2_migrated', 'true');
+      _migrated = true;
+      console.log('[StorageV2] Migration complete');
     } catch (e) {
-      console.error('Error cargando datos', e);
-      State.categories = [];
-      State.recipes = [];
+      console.error('[StorageV2] Migration error', e);
     }
-    this.normalizeAll();
-  },
-
-  save() {
-    if (FileStorage.active) {
-      FileStorage.save();
-      Settings.updateAboutStats();
-      return;
-    }
-    try {
-      localStorage.setItem(CONFIG.STORAGE_KEYS.categories, JSON.stringify(State.categories));
-      localStorage.setItem(CONFIG.STORAGE_KEYS.recipes, JSON.stringify(State.recipes));
-      Settings.updateAboutStats();
-    } catch (e) {
-      console.error(e);
-      App.toast.show('Error guardando. Espacio lleno?', Icons.warning);
-    }
-  },
-
-  saveDebounced: debounce(() => Storage.save(), CONFIG.SAVE_DEBOUNCE_MS),
-
-  normalizeRecipe(recipe) {
-    if (!recipe) return;
-    if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
-    if (!Array.isArray(recipe.timers)) recipe.timers = [];
-    if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
-    if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
-    if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
-    if (typeof recipe.notaFinal !== 'string') recipe.notaFinal = '';
-    const stepCount = parseLinesKeepEmpty(recipe.pasos).length;
-    while (recipe.stepPhotos.length < stepCount) recipe.stepPhotos.push('');
-    if (recipe.stepPhotos.length > stepCount) recipe.stepPhotos.length = stepCount;
-    recipe.timers = recipe.timers.map((t, i) => {
-      const durSec = Number.isFinite(t.durationSeconds)
-        ? t.durationSeconds
-        : ((parseInt(t.minutes || 0, 10) || 0) * 60 + (parseInt(t.seconds || 0, 10) || 0));
-      return {
-        id: t.id || generateId('t'),
-        name: t.name || ('Cronometro ' + (i + 1)),
-        durationSeconds: durSec,
-        remainingSeconds: Number.isFinite(t.remainingSeconds) ? t.remainingSeconds : durSec,
-        running: !!t.running,
-        endAt: t.endAt || 0
-      };
-    }).filter(t => t.durationSeconds > 0);
-  },
-
-  normalizeAll() {
-    State.recipes.forEach(r => this.normalizeRecipe(r));
-  },
-
-  ensureStepState(recipe) {
-    const steps = parseLinesKeepEmpty(recipe.pasos);
-    if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
-    while (recipe.stepDone.length < steps.length) recipe.stepDone.push(false);
-    if (recipe.stepDone.length > steps.length) recipe.stepDone.length = steps.length;
-    if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
-    if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
-    if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
-    while (recipe.stepPhotos.length < steps.length) recipe.stepPhotos.push('');
-    if (recipe.stepPhotos.length > steps.length) recipe.stepPhotos.length = steps.length;
   }
-};
 
+  const api = {
+    async load() {
+      if (localStorage.getItem('mr_v2_migrated') !== 'true') await migrateFromLocalStorage();
+      _migrated = true;
+
+      State.categories = await getAll('categories');
+      State.recipes = await getAll('recipes');
+
+      for (const r of State.recipes) {
+        if (r.fotoPath && r.fotoPath.startsWith('idb:')) {
+          const photo = await get('photos', r.id);
+          if (photo && photo.blob) r.fotoPath = await blobToBase64(photo.blob);
+        }
+        if (Array.isArray(r.stepPhotos)) {
+          for (let i = 0; i < r.stepPhotos.length; i++) {
+            const sp = r.stepPhotos[i];
+            if (sp && sp.startsWith('idb:')) {
+              const photo = await get('photos', sp.replace('idb:', ''));
+              if (photo && photo.blob) r.stepPhotos[i] = await blobToBase64(photo.blob);
+            }
+          }
+        }
+      }
+
+      const attemptsSetting = await get('settings', 'attempts');
+      if (attemptsSetting) Attempts._data = attemptsSetting.value || [];
+
+      const soundSetting = await get('settings', 'sound');
+      if (soundSetting && soundSetting.value !== undefined) AudioEngine.enabled = !!soundSetting.value;
+
+      const timerSetting = await get('settings', 'timer');
+      if (timerSetting && timerSetting.value) localStorage.setItem(CONFIG.STORAGE_KEYS.timer, timerSetting.value);
+
+      this.normalizeAll();
+    },
+
+    async save() {
+      for (const c of State.categories) await put('categories', c);
+      const existingCats = await getAll('categories');
+      const catIds = new Set(State.categories.map(c => c.id));
+      for (const ec of existingCats) if (!catIds.has(ec.id)) await del('categories', ec.id);
+
+      for (const r of State.recipes) {
+        const recipeToSave = { ...r };
+        if (recipeToSave.fotoPath && recipeToSave.fotoPath.startsWith('data:')) {
+          const blob = base64ToBlob(recipeToSave.fotoPath, getMimeFromBase64(recipeToSave.fotoPath));
+          await put('photos', { recipeId: r.id, blob: blob, mime: getMimeFromBase64(recipeToSave.fotoPath) });
+          recipeToSave.fotoPath = 'idb:' + r.id;
+        }
+        if (Array.isArray(recipeToSave.stepPhotos)) {
+          const markers = [];
+          for (let i = 0; i < recipeToSave.stepPhotos.length; i++) {
+            const sp = recipeToSave.stepPhotos[i];
+            if (sp && sp.startsWith('data:')) {
+              const key = r.id + '_step_' + i;
+              const blob = base64ToBlob(sp, getMimeFromBase64(sp));
+              await put('photos', { recipeId: key, blob: blob, mime: getMimeFromBase64(sp) });
+              markers.push('idb:' + key);
+            } else markers.push(sp);
+          }
+          recipeToSave.stepPhotos = markers;
+        }
+        await put('recipes', recipeToSave);
+      }
+      const existingRecipes = await getAll('recipes');
+      const recipeIds = new Set(State.recipes.map(r => r.id));
+      for (const er of existingRecipes) {
+        if (!recipeIds.has(er.id)) {
+          await del('recipes', er.id);
+          await del('photos', er.id);
+          const allPhotos = await getAll('photos');
+          for (const p of allPhotos) if (p.recipeId.startsWith(er.id + '_step_')) await del('photos', p.recipeId);
+        }
+      }
+
+      await put('settings', { key: 'attempts', value: Attempts._data });
+      await put('settings', { key: 'sound', value: AudioEngine.enabled });
+      const timerVal = localStorage.getItem(CONFIG.STORAGE_KEYS.timer);
+      if (timerVal) await put('settings', { key: 'timer', value: timerVal });
+      Settings.updateAboutStats();
+    },
+
+    saveDebounced: debounce(function() { api.save(); }, CONFIG.SAVE_DEBOUNCE_MS),
+
+    normalizeRecipe(recipe) {
+      if (!recipe) return;
+      if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
+      if (!Array.isArray(recipe.timers)) recipe.timers = [];
+      if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
+      if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
+      if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
+      if (typeof recipe.notaFinal !== 'string') recipe.notaFinal = '';
+      const stepCount = parseLinesKeepEmpty(recipe.pasos).length;
+      while (recipe.stepPhotos.length < stepCount) recipe.stepPhotos.push('');
+      if (recipe.stepPhotos.length > stepCount) recipe.stepPhotos.length = stepCount;
+      recipe.timers = recipe.timers.map((t, i) => {
+        const durSec = Number.isFinite(t.durationSeconds)
+          ? t.durationSeconds
+          : ((parseInt(t.minutes || 0, 10) || 0) * 60 + (parseInt(t.seconds || 0, 10) || 0));
+        return {
+          id: t.id || generateId('t'),
+          name: t.name || ('Cronometro ' + (i + 1)),
+          durationSeconds: durSec,
+          remainingSeconds: Number.isFinite(t.remainingSeconds) ? t.remainingSeconds : durSec,
+          running: !!t.running,
+          endAt: t.endAt || 0
+        };
+      }).filter(t => t.durationSeconds > 0);
+    },
+
+    normalizeAll() {
+      State.recipes.forEach(r => this.normalizeRecipe(r));
+    },
+
+    ensureStepState(recipe) {
+      const steps = parseLinesKeepEmpty(recipe.pasos);
+      if (!Array.isArray(recipe.stepDone)) recipe.stepDone = [];
+      while (recipe.stepDone.length < steps.length) recipe.stepDone.push(false);
+      if (recipe.stepDone.length > steps.length) recipe.stepDone.length = steps.length;
+      if (!Array.isArray(recipe.stepPhotos)) recipe.stepPhotos = [];
+      if (typeof recipe.porciones !== 'number' || recipe.porciones < 1) recipe.porciones = 4;
+      if (typeof recipe.ajustePorciones !== 'boolean') recipe.ajustePorciones = true;
+      while (recipe.stepPhotos.length < steps.length) recipe.stepPhotos.push('');
+      if (recipe.stepPhotos.length > steps.length) recipe.stepPhotos.length = steps.length;
+    },
+
+    async exportAll() {
+      const data = {
+        categories: await getAll('categories'),
+        recipes: await getAll('recipes'),
+        attempts: (await get('settings', 'attempts'))?.value || [],
+        sound: (await get('settings', 'sound'))?.value,
+        timer: (await get('settings', 'timer'))?.value,
+        version: 2,
+        exportedAt: new Date().toISOString()
+      };
+      for (const r of data.recipes) {
+        if (r.fotoPath && r.fotoPath.startsWith('idb:')) {
+          const photo = await get('photos', r.id);
+          if (photo && photo.blob) r.fotoPath = await blobToBase64(photo.blob);
+        }
+        if (Array.isArray(r.stepPhotos)) {
+          for (let i = 0; i < r.stepPhotos.length; i++) {
+            const sp = r.stepPhotos[i];
+            if (sp && sp.startsWith('idb:')) {
+              const photo = await get('photos', sp.replace('idb:', ''));
+              if (photo && photo.blob) r.stepPhotos[i] = await blobToBase64(photo.blob);
+            }
+          }
+        }
+      }
+      return data;
+    },
+
+    async importAll(data) {
+      if (!data || !data.recipes) return false;
+      await clearStore('categories');
+      await clearStore('recipes');
+      await clearStore('photos');
+      await clearStore('settings');
+      for (const c of (data.categories || [])) await put('categories', c);
+      for (const r of (data.recipes || [])) {
+        const rs = { ...r };
+        if (rs.fotoPath && rs.fotoPath.startsWith('data:')) {
+          const blob = base64ToBlob(rs.fotoPath, getMimeFromBase64(rs.fotoPath));
+          await put('photos', { recipeId: r.id, blob: blob, mime: getMimeFromBase64(rs.fotoPath) });
+          rs.fotoPath = 'idb:' + r.id;
+        }
+        if (Array.isArray(rs.stepPhotos)) {
+          const markers = [];
+          for (let i = 0; i < rs.stepPhotos.length; i++) {
+            const sp = rs.stepPhotos[i];
+            if (sp && sp.startsWith('data:')) {
+              const key = r.id + '_step_' + i;
+              const blob = base64ToBlob(sp, getMimeFromBase64(sp));
+              await put('photos', { recipeId: key, blob: blob, mime: getMimeFromBase64(sp) });
+              markers.push('idb:' + key);
+            } else markers.push(sp);
+          }
+          rs.stepPhotos = markers;
+        }
+        await put('recipes', rs);
+      }
+      if (data.attempts) await put('settings', { key: 'attempts', value: data.attempts });
+      if (data.sound !== undefined) await put('settings', { key: 'sound', value: data.sound });
+      if (data.timer) await put('settings', { key: 'timer', value: data.timer });
+      localStorage.setItem('mr_v2_migrated', 'true');
+      return true;
+    }
+  };
+  return api;
+})();
 const DOM = {};
 function cacheDOM() {
   const ids = [
@@ -713,7 +966,7 @@ function cacheDOM() {
     'attemptFormWrap','attemptPhotoInput','attemptPhotoPreview','attemptPhotoBtnText',
     'attemptRatingStars','attemptRatingSelect','attemptNotesInput','attemptSaveBtn','attemptCancelBtn','updateBanner','updateBtn',
     'attemptsGlobalList','attemptFormTitle',
-    'aboutStatRecipes','aboutStatCategories','aboutStatFavorites'
+    'aboutStatRecipes','aboutStatCategories','aboutStatFavorites','storageSizeInfo','storageWarning'
   ];
   ids.forEach(id => DOM[id] = byId(id));
 }
@@ -1054,7 +1307,7 @@ const Favorites = {
     const recipe = State.recipes.find(r => r.id === id);
     if (!recipe) return;
     recipe.favorito = !recipe.favorito;
-    Storage.save();
+    StorageV2.save();
     if (recipe.favorito) AudioEngine.favOn(); else AudioEngine.favOff();
     if (State.currentView === 'recipe-list') {
       if (State.listFilter.type === 'favorites') Render.recipeList(State.recipes.filter(r => r.favorito));
@@ -1093,7 +1346,7 @@ const Category = {
     } else {
       State.categories.push({ id: generateId('c'), nombre: name });
     }
-    Storage.save(); Render.categories(); Nav.home();
+    StorageV2.save(); Render.categories(); Nav.home();
     Toast.show(State.editingCategoryId ? 'Categoria actualizada' : 'Categoria creada', Icons.check);
     AudioEngine.success();
   },
@@ -1107,7 +1360,7 @@ const Category = {
       function() {
         State.recipes.forEach(function(r) { if (r.categoriaId === State.editingCategoryId) r.categoriaId = ''; });
         State.categories = State.categories.filter(function(c) { return c.id !== State.editingCategoryId; });
-        Storage.save(); Render.categories(); Nav.home();
+        StorageV2.save(); Render.categories(); Nav.home();
         Toast.show('Categoria eliminada', Icons.trash);
       });
   }
@@ -1173,8 +1426,8 @@ const Recipe = {
     State.currentRecipeId = id;
     const recipe = State.recipes.find(r => r.id === id);
     if (!recipe) return;
-    Storage.normalizeRecipe(recipe);
-    Storage.ensureStepState(recipe);
+    StorageV2.normalizeRecipe(recipe);
+    StorageV2.ensureStepState(recipe);
 
     DOM.detailTitle.textContent = recipe.nombre;
     DOM.detailRecipeName.textContent = recipe.nombre;if (recipe.fotoPath) {
@@ -1227,7 +1480,7 @@ const Recipe = {
   },
 
   renderSteps(recipe) {
-    Storage.ensureStepState(recipe);
+    StorageV2.ensureStepState(recipe);
     const steps = getSteps(recipe);
     if (!steps.length) {
       DOM.detailSteps.innerHTML = '<p class="empty-state" style="padding:20px 0">No hay pasos anadidos.</p>';
@@ -1252,9 +1505,9 @@ const Recipe = {
   toggleStep(index) {
     const recipe = State.recipe;
     if (!recipe) return;
-    Storage.ensureStepState(recipe);
+    StorageV2.ensureStepState(recipe);
     recipe.stepDone[index] = !recipe.stepDone[index];
-    Storage.save();
+    StorageV2.save();
     this.renderSteps(recipe);
     if (recipe.stepDone[index]) AudioEngine.check(); else AudioEngine.uncheck();
   },
@@ -1454,8 +1707,8 @@ const Recipe = {
         recipe.timers = timers;
         recipe.porciones = Math.max(1, porciones);
         recipe.ajustePorciones = ajustePorciones;
-        Storage.normalizeRecipe(recipe);
-        Storage.ensureStepState(recipe);
+        StorageV2.normalizeRecipe(recipe);
+        StorageV2.ensureStepState(recipe);
       }
     } else {
       const newRecipe = {
@@ -1474,7 +1727,7 @@ const Recipe = {
       };
       State.recipes.push(newRecipe);
     }
-    Storage.save();
+    StorageV2.save();
     Toast.show(State.editingRecipeId ? 'Receta actualizada' : 'Receta guardada', Icons.check);
     AudioEngine.success();
     Nav.backFromForm();
@@ -1491,7 +1744,7 @@ const Recipe = {
         FileStorage.deleteMedia(recipe.fotoPath.replace('fs:', ''));
       }
       State.recipes = State.recipes.filter(function(r) { return r.id !== id; });
-      Storage.save();
+      StorageV2.save();
       if (State.currentView === 'recipe-detail') Nav.backFromDetail();
       else Nav.backFromForm();
       Toast.show('Receta eliminada', Icons.trash);
@@ -1790,7 +2043,7 @@ const Timer = {
   },
 
   renderDetailTimers(recipe) {
-    Storage.normalizeRecipe(recipe);
+    StorageV2.normalizeRecipe(recipe);
     const wrap = DOM.detailTimersWrap;
     if (!recipe.timers.length) {
       wrap.innerHTML = '';
@@ -1842,13 +2095,13 @@ const Timer = {
         display.className = 'v4-display ' + self.timerClass(timer);
       }
     });
-    if (changed) Storage.saveDebounced();
+    if (changed) StorageV2.saveDebounced();
   },
 
   startDetail(index) {
     const recipe = State.recipe;
     if (!recipe) return;
-    Storage.normalizeRecipe(recipe);
+    StorageV2.normalizeRecipe(recipe);
     const timer = recipe.timers[index];
     if (!timer || timer.remainingSeconds <= 0) return;
     timer.running = true;
@@ -1857,14 +2110,14 @@ const Timer = {
       const self = this;
       State.detailTimerInterval = setInterval(function() { self.updateDetailTimers(); }, 1000);
     }
-    Storage.saveDebounced();
+    StorageV2.saveDebounced();
     this.updateDetailTimers();
   },
 
   pauseDetail(index) {
     const recipe = State.recipe;
     if (!recipe) return;
-    Storage.normalizeRecipe(recipe);
+    StorageV2.normalizeRecipe(recipe);
     const timer = recipe.timers[index];
     if (!timer) return;
     if (timer.running && timer.endAt) {
@@ -1872,20 +2125,20 @@ const Timer = {
     }
     timer.running = false;
     timer.endAt = 0;
-    Storage.saveDebounced();
+    StorageV2.saveDebounced();
     this.updateDetailTimers();
   },
 
   resetDetail(index) {
     const recipe = State.recipe;
     if (!recipe) return;
-    Storage.normalizeRecipe(recipe);
+    StorageV2.normalizeRecipe(recipe);
     const timer = recipe.timers[index];
     if (!timer) return;
     timer.running = false;
     timer.endAt = 0;
     timer.remainingSeconds = timer.durationSeconds;
-    Storage.saveDebounced();
+    StorageV2.saveDebounced();
     this.updateDetailTimers();
   },
 
@@ -2085,7 +2338,7 @@ const CookMode = (() => {
   function renderCookTimers() {
     const recipe = State.recipe;
     if (!DOM.cookTimersList || !recipe) return;
-    Storage.normalizeRecipe(recipe);
+    StorageV2.normalizeRecipe(recipe);
 
     if (!recipe.timers.length) {
       DOM.cookTimersList.innerHTML = '<p class="cook-empty-timers">No hay cronometros en esta receta</p>';
@@ -2135,7 +2388,7 @@ const CookMode = (() => {
       }
     });
 
-    if (changed) Storage.saveDebounced();
+    if (changed) StorageV2.saveDebounced();
   }
 
   function startQuickTimer(minutes) {
@@ -2275,7 +2528,7 @@ const CookMode = (() => {
       clearInterval(quickTimerInterval);
       quickTimerRunning = false;
     }
-    Storage.saveDebounced();
+    StorageV2.saveDebounced();
   }
 
   function doExit() {
@@ -2381,7 +2634,7 @@ const CookMode = (() => {
 
       cookTimerInterval = setInterval(updateCookTimers, 1000);
       updateCookTimers();
-      Storage.ensureStepState(recipe);
+      StorageV2.ensureStepState(recipe);
 
       // Auto-leer el primer paso despues de un pequeno delay
       setTimeout(() => speakCurrentStep(), 600);
@@ -2684,23 +2937,31 @@ const DataIO = {
     const file = input.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
       try {
         const data = JSON.parse(e.target.result);
-        if (!Array.isArray(data.categories) || !Array.isArray(data.recipes)) throw new Error('Formato invalido');
-        data.categories.forEach(function(c) {
-          if (typeof c.id !== 'string') c.id = generateId('c');
-          if (typeof c.nombre !== 'string') c.nombre = 'Sin nombre';
-        });
-        data.recipes.forEach(function(r) {
-          if (typeof r.id !== 'string') r.id = generateId('r');
-          if (typeof r.nombre !== 'string') r.nombre = 'Sin nombre';
-        });
-        Modal.show('Importar datos', 'Esto reemplazara TODOS tus datos actuales. ¿Continuar?', function() {
-          State.categories = data.categories;
-          State.recipes = data.recipes;
-          Storage.normalizeAll();
-          Storage.save();
+        const isV2 = data.version === 2;
+        if (!isV2 && (!Array.isArray(data.categories) || !Array.isArray(data.recipes))) throw new Error('Formato invalido');
+        if (!isV2) {
+          data.categories.forEach(function(c) {
+            if (typeof c.id !== 'string') c.id = generateId('c');
+            if (typeof c.nombre !== 'string') c.nombre = 'Sin nombre';
+          });
+          data.recipes.forEach(function(r) {
+            if (typeof r.id !== 'string') r.id = generateId('r');
+            if (typeof r.nombre !== 'string') r.nombre = 'Sin nombre';
+          });
+        }
+        Modal.show('Importar datos', 'Esto reemplazara TODOS tus datos actuales. ¿Continuar?', async function() {
+          if (isV2) {
+            await StorageV2.importAll(data);
+          } else {
+            State.categories = data.categories;
+            State.recipes = data.recipes;
+            StorageV2.normalizeAll();
+          }
+          await StorageV2.save();
+          await StorageV2.load();
           Render.categories();
           Nav.home();
           Toast.show('Datos importados correctamente', Icons.check);
@@ -2727,7 +2988,7 @@ const DataIO = {
       if (FileStorage.active) {
         FileStorage.save();
       } else {
-        Storage.save();
+        StorageV2.save();
         Attempts.save();
       }
       Render.categories();
@@ -2743,6 +3004,8 @@ const Settings = {
     this.updateSoundToggle();
     this.updateFileStorageToggle();
     this.updateAboutStats();
+    this.updateStorageInfo();
+    this.checkStorageAvailability();
   },
   updateAboutStats() {
     if (DOM.aboutStatRecipes) DOM.aboutStatRecipes.textContent = State.recipes.length;
@@ -2798,6 +3061,45 @@ const Settings = {
     }
     this.updateFileStorageToggle();
     Render.categories();
+  },
+  async updateStorageInfo() {
+    if (!DOM.storageSizeInfo) return;
+    try {
+      const estimate = await navigator.storage.estimate();
+      const usedMB = estimate.usage ? (estimate.usage / 1024 / 1024).toFixed(1) : '?';
+      const totalMB = estimate.quota ? (estimate.quota / 1024 / 1024).toFixed(0) : '?';
+      DOM.storageSizeInfo.textContent = 'Usado: ' + usedMB + ' MB' + (estimate.quota ? ' / ' + totalMB + ' MB disponibles' : '');
+    } catch (e) {
+      DOM.storageSizeInfo.textContent = 'Almacenamiento: IndexedDB activo';
+    }
+  },
+  checkStorageAvailability() {
+    if (!DOM.storageWarning) return;
+    const isPrivate = !window.indexedDB || navigator.storage === undefined;
+    if (isPrivate) {
+      DOM.storageWarning.style.display = 'flex';
+      DOM.storageWarning.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Modo privado detectado. Tus datos no se guardaran al cerrar la pestana.</span>';
+    } else {
+      DOM.storageWarning.style.display = 'none';
+    }
+  },
+  async exportBackup() {
+    try {
+      const data = await StorageV2.exportAll();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mis-recetas-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      Toast.show('Backup descargado', Icons.save);
+    } catch (e) {
+      console.error(e);
+      Toast.show('Error al exportar', Icons.error);
+    }
   }
 };
 
@@ -2837,7 +3139,7 @@ async function init() {
   cacheDOM();
   AudioEngine.loadSetting();
   await FileStorage.init();
-  await Storage.load();
+  await StorageV2.load();
   Attempts.load();
   if (FileStorage.needsReauth) {
     Toast.show('Toque el toggle de carpeta para reactivar el acceso', Icons.warning);
