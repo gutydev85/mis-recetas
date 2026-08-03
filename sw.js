@@ -1,5 +1,5 @@
-const CACHE_NAME = 'mi-recetario-v5';
-const FILES_TO_CACHE = [
+const CACHE_NAME = 'mi-recetario-v6';
+const APP_FILES = [
   './',
   './index.html',
   './styles.css',
@@ -10,22 +10,18 @@ const FILES_TO_CACHE = [
   './icon-180.png'
 ];
 
-// Track if there's a new version waiting
-let waitingSW = null;
-
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return Promise.all(
-        FILES_TO_CACHE.map(url =>
+        APP_FILES.map(url =>
           cache.add(url).catch(err => {
             console.warn('SW: failed to cache', url, err);
           })
         )
       );
-    })
+    }).then(() => self.skipWaiting())
   );
-  // Do NOT skipWaiting automatically - wait for user confirmation
 });
 
 self.addEventListener('activate', e => {
@@ -38,41 +34,68 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(response => {
-      if (response) return response;
-      return fetch(e.request).then(networkResponse => {
+  const url = new URL(e.request.url);
+
+  const isAppFile = APP_FILES.some(f => {
+    const path = f.replace('./', '/');
+    return url.pathname === path || (f === './' && url.pathname === '/');
+  });
+
+  const isImage = e.request.destination === 'image' ||
+                  /\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname);
+
+  if (isAppFile) {
+    e.respondWith(
+      fetch(e.request).then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {
           const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(e.request, clone);
-          });
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }
         return networkResponse;
       }).catch(() => {
-        if (e.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-        if (e.request.destination === 'image') {
+        return caches.match(e.request).then(cached => {
+          return cached || new Response('Offline', { status: 503 });
+        });
+      })
+    );
+    return;
+  }
+
+  if (isImage) {
+    e.respondWith(
+      caches.match(e.request).then(response => {
+        if (response) return response;
+        return fetch(e.request).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          }
+          return networkResponse;
+        }).catch(() => {
           return new Response('', { status: 204 });
-        }
+        });
+      })
+    );
+    return;
+  }
+
+  e.respondWith(
+    fetch(e.request).then(networkResponse => {
+      if (networkResponse && networkResponse.status === 200) {
+        const clone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+      }
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(e.request).then(cached => {
+        return cached || new Response('Offline', { status: 503 });
       });
     })
   );
 });
 
-// Listen for messages from the client
 self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') {
     self.skipWaiting();
   }
-});
-
-// When a new SW is waiting, notify all clients
-self.addEventListener('waiting', e => {
-  self.clients.matchAll().then(clients => {
-    clients.forEach(client => {
-      client.postMessage({ type: 'UPDATE_AVAILABLE' });
-    });
-  });
 });

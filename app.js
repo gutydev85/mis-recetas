@@ -711,7 +711,7 @@ function cacheDOM() {
     'cookIngredientsOverlay','cookIngredientsList',
     'attemptsSection','attemptsToggleBtn','attemptsContent','attemptsList',
     'attemptFormWrap','attemptPhotoInput','attemptPhotoPreview','attemptPhotoBtnText',
-    'attemptRatingStars','attemptNotesInput','attemptSaveBtn','attemptCancelBtn',
+    'attemptRatingStars','attemptRatingSelect','attemptNotesInput','attemptSaveBtn','attemptCancelBtn','updateBanner','updateBtn',
     'attemptsGlobalList','attemptFormTitle',
     'aboutStatRecipes','aboutStatCategories','aboutStatFavorites'
   ];
@@ -2346,7 +2346,7 @@ const CookMode = (() => {
         e.preventDefault();
         speakCurrentStep();
       }
-      else if (e.key === 'Escape') {
+        else if (e.key === 'Escape') {
         e.preventDefault();
         exit();
       }
@@ -2463,7 +2463,7 @@ const Attempts = {
       var cls = filled ? 'active' : '';
       var star = filled ? '&#9733;' : '&#9734;';
       if (interactive) {
-        html += '<span class="' + cls + '" data-value="' + i + '" onclick="App.attempts.setRating(' + i + ')">' + star + '</span>';
+        html += '<span class="' + cls + '" data-value="' + i + '">' + star + '</span>';
       } else {
         html += '<span class="' + cls + '">' + star + '</span>';
       }
@@ -2520,6 +2520,7 @@ const Attempts = {
       var a = this._data.find(function(x) { return x.id === attemptId; });
       if (a) {
         this.setRating(a.rating || 0);
+        if (DOM.attemptRatingSelect) DOM.attemptRatingSelect.value = a.rating || 0;
         if (DOM.attemptNotesInput) DOM.attemptNotesInput.value = a.notes || '';
         if (a.photo) {
           this._currentPhotoBase64 = a.photo;
@@ -2553,14 +2554,14 @@ const Attempts = {
   },
 
   setRating(n) {
+    n = parseInt(n, 10) || 0;
+    if (DOM.attemptRatingSelect) DOM.attemptRatingSelect.value = n;
     if (!DOM.attemptRatingStars) return;
     DOM.attemptRatingStars.setAttribute('data-rating', n);
     var spans = DOM.attemptRatingStars.querySelectorAll('span');
-    spans.forEach(function(s, i) {
-      var val = i + 1;
-      s.classList.toggle('active', val <= n);
-      s.innerHTML = val <= n ? '&#9733;' : '&#9734;';
-    });
+    for (var i = 0; i < spans.length; i++) {
+      spans[i].innerHTML = (i + 1) <= n ? '&#9733;' : '&#9734;';
+    }
   },
 
   handlePhoto(input) {
@@ -2596,7 +2597,7 @@ const Attempts = {
 
   saveAttempt() {
     if (!this._currentRecipeId) return;
-    var rating = parseInt(DOM.attemptRatingStars ? DOM.attemptRatingStars.getAttribute('data-rating') : '0', 10) || 0;
+    var rating = parseInt(DOM.attemptRatingSelect ? DOM.attemptRatingSelect.value : '0', 10) || 0;
     var notes = DOM.attemptNotesInput ? DOM.attemptNotesInput.value.trim() : '';
 
     if (this._editingAttemptId) {
@@ -2854,7 +2855,7 @@ async function init() {
       if (DOM.modalOverlay && DOM.modalOverlay.classList.contains('active')) Modal.close();
       else if (State.currentView === 'cook-mode') CookMode.exit();
       else if (State.currentView === 'attempts') Nav.home();
-    else if (State.currentView !== 'home') Nav.home();
+      else if (State.currentView !== 'home') Nav.home();
     }
   });
 
@@ -2962,6 +2963,34 @@ async function init() {
       if (homeView) homeView.classList.add('active');
     }
   }, 200));
+
+  // Listener del select de calificación en intentos
+  if (DOM.attemptRatingSelect) {
+    DOM.attemptRatingSelect.addEventListener('change', function() {
+      var val = parseInt(DOM.attemptRatingSelect.value, 10) || 0;
+      App.attempts.setRating(val);
+    });
+  }
+
+  // Listener del botón de actualizar app
+  if (DOM.updateBtn) {
+    DOM.updateBtn.addEventListener('click', function() {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage('skipWaiting');
+        window.location.reload();
+      }
+    });
+  }
+
+  // Sistema de actualización de PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'UPDATE_AVAILABLE') {
+        if (DOM.updateBanner) DOM.updateBanner.style.display = 'flex';
+      }
+    });
+  }
+
 }
 
 window.App = {
@@ -2981,6 +3010,7 @@ window.App = {
   modal: Modal,
   audio: { toggle: function() { Settings.toggleSound(); } },
   install: function() { PWA.install(); }
-};
+}
+
 
 document.addEventListener('DOMContentLoaded', init);
