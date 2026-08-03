@@ -2667,7 +2667,7 @@ const Attempts = {
 
 const DataIO = {
   export() {
-    const data = { version: CONFIG.VERSION, exportDate: new Date().toISOString(), categories: State.categories, recipes: State.recipes };
+    const data = { version: CONFIG.VERSION, exportDate: new Date().toISOString(), categories: State.categories, recipes: State.recipes, attempts: Attempts._data };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2696,9 +2696,19 @@ const DataIO = {
           if (typeof r.id !== 'string') r.id = generateId('r');
           if (typeof r.nombre !== 'string') r.nombre = 'Sin nombre';
         });
+        if (data.attempts) {
+          if (!Array.isArray(data.attempts)) throw new Error('Formato de intentos invalido');
+          data.attempts.forEach(function(a) {
+            if (typeof a.id !== 'string') a.id = generateId('a');
+            if (typeof a.recipeId !== 'string') a.recipeId = '';
+            if (typeof a.date !== 'string') a.date = new Date().toISOString();
+          });
+        }
         Modal.show('Importar datos', 'Esto reemplazara TODOS tus datos actuales. ¿Continuar?', function() {
           State.categories = data.categories;
           State.recipes = data.recipes;
+          Attempts._data = data.attempts || [];
+          Attempts.save();
           Storage.normalizeAll();
           Storage.save();
           Render.categories();
